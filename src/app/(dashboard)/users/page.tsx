@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Pagination } from "@/components/common/Pagination";
-import { useUsers } from "@/hooks";
+import { useUsers, usePermissions } from "@/hooks";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +58,12 @@ const ROLE_LABELS: Record<string, string> = {
 export default function UsersPage() {
   const router = useRouter();
   const { users, isLoading, fetchUsers, deleteUser } = useUsers();
+  const { isSuperAdmin } = usePermissions();
+
+  // NOTARIO cannot act on SUPER_ADMIN users
+  const canActOn = (target: User) =>
+    isSuperAdmin() || !target.roles.includes("SUPER_ADMIN");
+
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<Role | "">("");
   const [page, setPage] = useState(1);
@@ -136,38 +142,47 @@ export default function UsersPage() {
       key: "actions",
       label: "Acciones",
       className: "text-right",
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => handleToggleActive(row)}
-            title={row.isActive ? "Desactivar" : "Activar"}
-          >
-            {row.isActive
-              ? <ToggleRight className="w-4 h-4 text-emerald-400" />
-              : <ToggleLeft className="w-4 h-4" />
-            }
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => router.push(`/users/${row.id}/edit`)}
-          >
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive"
-            onClick={() => setDeleteId(row.id)}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      ),
+      render: (row) => {
+        const allowed = canActOn(row);
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {allowed ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleToggleActive(row)}
+                  title={row.isActive ? "Desactivar" : "Activar"}
+                >
+                  {row.isActive
+                    ? <ToggleRight className="w-4 h-4 text-emerald-400" />
+                    : <ToggleLeft className="w-4 h-4" />
+                  }
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => router.push(`/users/${row.id}/edit`)}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive"
+                  onClick={() => setDeleteId(row.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground pr-2">Sin permisos</span>
+            )}
+          </div>
+        );
+      },
     },
   ];
 

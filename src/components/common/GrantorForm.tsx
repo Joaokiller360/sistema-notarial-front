@@ -1,10 +1,40 @@
 "use client";
 
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, Controller } from "react-hook-form";
 import { Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const NATIONALITIES = [
+  "Ecuatoriana",
+  "Colombiana",
+  "Peruana",
+  "Venezolana",
+  "Estadounidense",
+  "Española",
+  "Argentina",
+  "Chilena",
+  "Boliviana",
+  "Brasileña",
+  "Mexicana",
+  "Panameña",
+  "Cubana",
+  "Italiana",
+  "Francesa",
+  "Alemana",
+  "China",
+  "Otra",
+];
+
+const DEFAULT_NATIONALITY = "Ecuatoriana";
 
 interface GrantorFormProps {
   fieldName: "grantors" | "beneficiaries";
@@ -40,7 +70,7 @@ export function GrantorForm({ fieldName, title, icon }: GrantorFormProps) {
           variant="outline"
           size="sm"
           onClick={() =>
-            append({ nombresCompletos: "", cedulaORuc: "", nacionalidad: "" })
+            append({ nombresCompletos: "", cedulaORuc: "", nacionalidad: DEFAULT_NATIONALITY })
           }
         >
           <Plus className="w-3.5 h-3.5 mr-1.5" />
@@ -109,10 +139,26 @@ export function GrantorForm({ fieldName, title, icon }: GrantorFormProps) {
 
               <div className="space-y-1.5">
                 <Label className="text-xs">Nacionalidad</Label>
-                <Input
-                  placeholder="Ej: Ecuatoriana"
-                  className="h-8 text-sm"
-                  {...register(`${fieldName}.${index}.nacionalidad`)}
+                <Controller
+                  control={control}
+                  name={`${fieldName}.${index}.nacionalidad`}
+                  render={({ field: f }) => (
+                    <Select
+                      value={f.value || DEFAULT_NATIONALITY}
+                      onValueChange={f.onChange}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NATIONALITIES.map((n) => (
+                          <SelectItem key={n} value={n}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
                 {fieldErrors?.[index]?.nacionalidad?.message && (
                   <p className="text-xs text-destructive">

@@ -87,16 +87,17 @@ export default function ArchivesPage() {
   const [clientPage, setClientPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Always use standard server pagination. Type filtering is done client-side.
-  // Never send `type` to the backend — it returns 400.
+  // Send type to backend when active (backend supports it with normal limit).
+  // Also filter client-side as safety net in case the backend ignores the param.
   const load = useCallback(() => {
     fetchArchives({
       search: search || undefined,
+      type: activeType || undefined,
       status: status || undefined,
       page: serverPage,
       limit: PAGE_LIMIT,
     });
-  }, [fetchArchives, search, status, serverPage]);
+  }, [fetchArchives, search, activeType, status, serverPage]);
 
   useEffect(() => {
     const timer = setTimeout(load, 300);

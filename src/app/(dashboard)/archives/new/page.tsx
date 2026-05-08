@@ -63,8 +63,8 @@ function NewArchiveForm() {
     defaultValues: {
       type: defaultType || undefined,
       code: "",
-      grantors: [{ nombresCompletos: "", cedulaORuc: "", nacionalidad: "" }],
-      beneficiaries: [{ nombresCompletos: "", cedulaORuc: "", nacionalidad: "" }],
+      grantors: [{ nombresCompletos: "", cedulaORuc: "", nacionalidad: "Ecuatoriana" }],
+      beneficiaries: [{ nombresCompletos: "", cedulaORuc: "", nacionalidad: "Ecuatoriana" }],
       pdf: null,
     },
   });

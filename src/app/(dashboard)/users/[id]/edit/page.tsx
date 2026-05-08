@@ -20,7 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PageLoader } from "@/components/common/LoadingSpinner";
-import { useUsers } from "@/hooks";
+import { useUsers, usePermissions } from "@/hooks";
 import { rolesService, type RoleItem } from "@/services";
 
 const ROLE_TYPE_LABELS: Record<string, string> = {
@@ -44,6 +44,7 @@ export default function EditUserPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, isLoading, fetchUser, updateUser, isSubmitting } = useUsers();
+  const { isSuperAdmin } = usePermissions();
   const [roles, setRoles] = useState<RoleItem[]>([]);
 
   useEffect(() => {
@@ -94,6 +95,21 @@ export default function EditUserPage() {
   };
 
   if (isLoading) return <PageLoader />;
+
+  // NOTARIO cannot edit SUPER_ADMIN users
+  if (!isSuperAdmin() && user?.roles.includes("SUPER_ADMIN")) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-muted-foreground">No tienes permiso para editar este usuario.</p>
+        <button
+          className="text-sm text-primary underline"
+          onClick={() => router.push("/users")}
+        >
+          Volver a Usuarios
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
