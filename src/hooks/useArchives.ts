@@ -64,6 +64,56 @@ export function useArchives() {
     }
   }, []);
 
+  // Fetches ALL pages (batch: 50/page, max 500) without sending `type` to backend.
+  // Needed because the backend DTO forbids `type` as a query param.
+  const fetchAllArchives = useCallback(
+    async (filters: Omit<ArchiveFilters, "type"> = {}) => {
+      setIsLoading(true);
+      setArchives(null);
+      try {
+        const BATCH = 50;
+        const first = await archivesService.getAll({ ...filters, page: 1, limit: BATCH });
+        let all: Archive[] = [...first.data];
+
+        if (first.totalPages > 1) {
+          const remaining = Array.from(
+            { length: Math.min(first.totalPages - 1, 9) },
+            (_, i) => i + 2
+          );
+          const results = await Promise.all(
+            remaining.map((p) =>
+              archivesService.getAll({ ...filters, page: p, limit: BATCH })
+            )
+          );
+          for (const r of results) all = all.concat(r.data);
+        }
+
+        setArchives({
+          data: all,
+          total: all.length,
+          page: 1,
+          limit: all.length || BATCH,
+          totalPages: 1,
+        });
+      } catch (err: unknown) {
+        const axiosErr = err as {
+          response?: { data?: { message?: string }; status?: number };
+        };
+        const status = axiosErr?.response?.status;
+        const msg = axiosErr?.response?.data?.message;
+        console.error("[fetchAllArchives] error", status, msg);
+        toast.error(
+          msg
+            ? `Error ${status ?? ""}: ${Array.isArray(msg) ? msg.join(" · ") : msg}`
+            : "Error al cargar los archivos"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
   const fetchArchive = useCallback(async (id: string) => {
     setIsLoading(true);
     try {
@@ -155,6 +205,7 @@ export function useArchives() {
     isLoading,
     isSubmitting,
     fetchArchives,
+    fetchAllArchives,
     fetchArchive,
     createArchive,
     updateArchive,

@@ -129,7 +129,7 @@ function NewArchiveForm() {
                   Información General
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 col-end-3 col">
                 {/* Tipo */}
                 <div className="space-y-1.5">
                   <Label>Tipo de Documento</Label>
@@ -162,7 +162,7 @@ function NewArchiveForm() {
                   <div className="flex gap-2">
                     <Input
                       id="code"
-                      placeholder="ARQ-2025-00001"
+                      placeholder="20260801001P00000"
                       className="font-mono"
                       {...register("code")}
                     />

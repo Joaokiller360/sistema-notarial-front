@@ -177,9 +177,7 @@ export default function UsersPage() {
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </>
-            ) : (
-              <span className="text-xs text-muted-foreground pr-2">Sin permisos</span>
-            )}
+            ) : null}
           </div>
         );
       },

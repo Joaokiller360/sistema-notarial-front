@@ -75,7 +75,7 @@ const TYPE_COLORS: Record<ArchiveType, string> = {
 
 export default function ArchivesPage() {
   const router = useRouter();
-  const { archives, isLoading, fetchArchives, deleteArchive, clearArchives } = useArchives();
+  const { archives, isLoading, fetchArchives, fetchAllArchives, deleteArchive, clearArchives } = useArchives();
   const { canEditArchive, canDeleteArchive, canCreateArchive } = usePermissions();
 
   const [activeType, setActiveType] = useState<ArchiveType | "">("");
@@ -87,17 +87,22 @@ export default function ArchivesPage() {
   const [clientPage, setClientPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Send type to backend when active (backend supports it with normal limit).
-  // Also filter client-side as safety net in case the backend ignores the param.
   const load = useCallback(() => {
-    fetchArchives({
-      search: search || undefined,
-      type: activeType || undefined,
-      status: status || undefined,
-      page: serverPage,
-      limit: PAGE_LIMIT,
-    });
-  }, [fetchArchives, search, activeType, status, serverPage]);
+    if (activeType) {
+      // Backend forbids `type` as query param — fetch all pages and filter client-side.
+      fetchAllArchives({
+        search: search || undefined,
+        status: status || undefined,
+      });
+    } else {
+      fetchArchives({
+        search: search || undefined,
+        status: status || undefined,
+        page: serverPage,
+        limit: PAGE_LIMIT,
+      });
+    }
+  }, [fetchArchives, fetchAllArchives, search, activeType, status, serverPage]);
 
   useEffect(() => {
     const timer = setTimeout(load, 300);
