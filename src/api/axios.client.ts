@@ -11,7 +11,7 @@ const API_URL =
 export const apiClient = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 30000,
+  timeout: 7200000,
 });
 
 let isRefreshing = false;

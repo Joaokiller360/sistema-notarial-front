@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ||
-  "http://localhost:8000";
+  "https://backnotaria.joaobarres.dev";
 
 const nextConfig: NextConfig = {
   async rewrites() {

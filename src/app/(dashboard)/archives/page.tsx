@@ -365,7 +365,7 @@ export default function ArchivesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar archivo?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. El archivo será eliminado permanentemente.
+              Esta acción no se puede deshacer. <br />El archivo será eliminado permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
