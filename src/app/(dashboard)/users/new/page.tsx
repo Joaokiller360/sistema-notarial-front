@@ -96,11 +96,11 @@ export default function NewUserPage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <PageHeader title="Nuevo Usuario" description="Agrega un nuevo usuario al sistema">
-        <ButtonLink href="/users" variant="outline" size="sm">
+        <ButtonLink className="text-sidebar" href="/users" variant="outline" size="sm">
           <ArrowLeft className="w-4 h-4 mr-1.5" />
           Volver
         </ButtonLink>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button className="bg-sidebar cursor-pointer" type="submit" disabled={isSubmitting}>
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -117,7 +117,7 @@ export default function NewUserPage() {
 
       <div className="max-w-2xl space-y-6">
         {/* Datos personales */}
-        <Card className="border-border">
+        <Card className="border-border bg-sidebar">
           <CardHeader className="pb-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <User className="w-4 h-4 text-primary" />
@@ -180,7 +180,7 @@ export default function NewUserPage() {
         </Card>
 
         {/* Contraseña */}
-        <Card className="border-border">
+        <Card className="border-border bg-sidebar">
           <CardHeader className="pb-4">
             <CardTitle className="text-sm font-semibold">Contraseña de Acceso</CardTitle>
           </CardHeader>

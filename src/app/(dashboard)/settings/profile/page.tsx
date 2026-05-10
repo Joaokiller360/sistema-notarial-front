@@ -60,7 +60,7 @@ export default function ProfilePage() {
 
       <div className="max-w-2xl space-y-6">
         {/* Avatar */}
-        <Card className="border-border">
+        <Card className="border-border bg-sidebar">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <Avatar className="w-16 h-16">
@@ -84,7 +84,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Form */}
-        <Card className="border-border">
+        <Card className="border-border bg-sidebar">
           <CardHeader className="pb-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <User className="w-4 h-4 text-primary" />
@@ -123,7 +123,7 @@ export default function ProfilePage() {
 
               <Separator />
 
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" className="text-sidebar cursor-pointer" disabled={isSubmitting}>
                 {isSubmitting ? (
                   "Guardando..."
                 ) : (

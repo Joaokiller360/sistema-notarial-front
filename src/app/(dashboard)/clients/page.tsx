@@ -206,16 +206,16 @@ export default function ClientsPage() {
         description="Otorgantes y beneficiarios que han participado en trámites"
       >
         {!isLoading && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sidebar/80 border border-primary/20">
             <UserRound className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-medium text-primary">
+            <span className="text-md font-medium text-primary">
               {filtered.length} clientes
             </span>
           </div>
         )}
       </PageHeader>
 
-      <div className="relative max-w-sm">
+      <div className="relative max-w-sm bg-sidebar/80 rounded-xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Buscar por nombre o cédula..."

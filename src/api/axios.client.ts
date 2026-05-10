@@ -6,7 +6,8 @@ import axios, {
 import { tokenUtils } from "@/utils/token";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://backnotaria.joaobarres.dev/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api/v1";
+  console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -107,7 +108,7 @@ function getUserIdFromToken(): string | null {
 
 export const apiFormClient = axios.create({
   baseURL: API_URL,
-  timeout: 60000,
+  timeout: 7200000,
 });
 
 apiFormClient.interceptors.request.use(

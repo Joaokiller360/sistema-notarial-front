@@ -159,7 +159,7 @@ export default function ClientDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Info */}
         <div className="space-y-4">
-          <Card className="border-border">
+          <Card className="border-border bg-sidebar">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <UserRound className="w-4 h-4 text-primary" />
@@ -193,7 +193,7 @@ export default function ClientDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-muted/20">
+          <Card className="border-border bg-sidebar">
             <CardContent className="pt-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -219,7 +219,7 @@ export default function ClientDetailPage() {
 
         {/* Archives */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border">
+          <Card className="border-border bg-sidebar">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Users className="w-4 h-4 text-primary" />
@@ -246,7 +246,7 @@ export default function ClientDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border">
+          <Card className="border-border bg-sidebar">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-emerald-400" />

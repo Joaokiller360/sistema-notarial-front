@@ -10,7 +10,7 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex h-screen overflow-hidden">
         {/* Sidebar - Desktop */}
         <div className="hidden md:flex">
           <Sidebar />
@@ -24,12 +24,12 @@ export default function DashboardLayout({
           <Navbar />
 
           {/* Breadcrumbs */}
-          <div className="px-6 py-2 border-b border-border bg-background/50">
+          <div className="px-6 py-2 border-b border-border bg-sidebar">
             <Breadcrumbs />
           </div>
 
           {/* Page Content */}
-          <main className="flex-1 overflow-y-auto scrollbar-thin">
+          <main className="flex-1 overflow-y-auto scrollbar-thin bg-sidebar/40">
             <div className="p-6">{children}</div>
           </main>
         </div>

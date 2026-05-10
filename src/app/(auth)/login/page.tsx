@@ -42,10 +42,10 @@ export default function LoginPage() {
           </div>
           <span className="font-semibold text-sm">Sistema Notarial</span>
         </div>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">
+        <h2 className="text-3xl text-center font-bold tracking-tight text-foreground">
           Iniciar sesión
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-center text-muted-foreground mt-1">
           Ingresa tus credenciales para acceder al sistema
         </p>
       </div>
@@ -74,7 +74,7 @@ export default function LoginPage() {
             <Label htmlFor="password">Contraseña</Label>
             <Link
               href="/forgot-password"
-              className="text-xs text-primary hover:underline"
+              className="text-xs text-primary underline hover:underline"
             >
               ¿Olvidaste tu contraseña?
             </Link>
@@ -111,7 +111,7 @@ export default function LoginPage() {
         {/* Submit */}
         <Button
           type="submit"
-          className="w-full"
+          className="w-full text-sidebar"
           disabled={isLoading}
           size="lg"
         >

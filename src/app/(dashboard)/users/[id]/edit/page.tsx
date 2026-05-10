@@ -48,7 +48,7 @@ export default function EditUserPage() {
   const [roles, setRoles] = useState<RoleItem[]>([]);
 
   useEffect(() => {
-    rolesService.getAll().then(setRoles).catch(() => {});
+    rolesService.getAll().then(setRoles).catch(() => { });
   }, []);
 
   const {
@@ -117,11 +117,11 @@ export default function EditUserPage() {
         title={user ? `Editar: ${user.firstName} ${user.lastName}` : "Editar Usuario"}
         description="Modifica los datos del usuario"
       >
-        <ButtonLink href="/users" variant="outline" size="sm">
+        <ButtonLink href="/users" className="text-sidebar" variant="outline" size="sm">
           <ArrowLeft className="w-4 h-4 mr-1.5" />
           Cancelar
         </ButtonLink>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" className="bg-sidebar cursor-pointer" disabled={isSubmitting}>
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -137,7 +137,7 @@ export default function EditUserPage() {
       </PageHeader>
 
       <div className="max-w-2xl">
-        <Card className="border-border">
+        <Card className="bg-sidebar border-border">
           <CardHeader className="pb-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <User className="w-4 h-4 text-primary" />

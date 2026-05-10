@@ -49,12 +49,12 @@ interface TypeTab {
 }
 
 const TYPE_TABS: TypeTab[] = [
-  { value: "", label: "Todos",           icon: LayoutList,    color: "text-muted-foreground" },
-  { value: "A", label: "Arrendamientos",        icon: FolderArchive, color: "text-primary" },
-  { value: "C", label: "Certificaciones",icon: FileCheck2,    color: "text-emerald-400" },
-  { value: "D", label: "Diligencias",    icon: ClipboardList, color: "text-blue-400" },
-  { value: "P", label: "Protocolos",     icon: BookOpen,      color: "text-purple-400" },
-  { value: "O", label: "Otros",          icon: FolderOpen,    color: "text-amber-400" },
+  { value: "", label: "Todos", icon: LayoutList, color: "text-muted-foreground" },
+  { value: "A", label: "Arrendamientos", icon: FolderArchive, color: "text-primary" },
+  { value: "C", label: "Certificaciones", icon: FileCheck2, color: "text-emerald-400" },
+  { value: "D", label: "Diligencias", icon: ClipboardList, color: "text-blue-400" },
+  { value: "P", label: "Protocolos", icon: BookOpen, color: "text-purple-400" },
+  { value: "O", label: "Otros", icon: FolderOpen, color: "text-amber-400" },
 ];
 
 const TYPE_LABELS: Record<ArchiveType, string> = {
@@ -235,7 +235,7 @@ export default function ArchivesPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 cursor-pointer"
             onClick={() => router.push(`/archives/${row.id}`)}
           >
             <Eye className="w-3.5 h-3.5" />
@@ -244,7 +244,7 @@ export default function ArchivesPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 cursor-pointer"
               onClick={() => router.push(`/archives/${row.id}/edit`)}
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -254,7 +254,7 @@ export default function ArchivesPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-destructive"
+              className="h-8 w-8 text-destructive cursor-pointer"
               onClick={() => setDeleteId(row.id)}
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -272,7 +272,7 @@ export default function ArchivesPage() {
         description="Gestión y consulta de archivos del sistema"
       >
         {canCreateArchive() && (
-          <ButtonLink href={newHref}>
+          <ButtonLink href={newHref} className="text-sidebar">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo{activeType ? ` ${TYPE_LABELS[activeType]}` : " Archivo"}
           </ButtonLink>
@@ -280,13 +280,13 @@ export default function ArchivesPage() {
       </PageHeader>
 
       {/* Type tabs */}
-      <div className="flex items-center gap-1 border-b border-border overflow-x-auto pb-0 scrollbar-none">
+      <div className="flex bg-sidebar rounded-xl items-center gap-1 border-b border-border overflow-x-auto pb-0 scrollbar-none">
         {TYPE_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeType === tab.value;
           return (
             <button
-              key={tab.value || "__all__"}
+              key={tab.value || "Todos"}
               onClick={() => handleTabChange(tab.value as ArchiveType | "")}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-all border-b-2 -mb-px",
@@ -309,7 +309,7 @@ export default function ArchivesPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+        <div className="relative flex-1 bg-sidebar rounded-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por código, nombre o cédula..."
@@ -318,22 +318,24 @@ export default function ArchivesPage() {
             onChange={(e) => { setSearch(e.target.value); setServerPage(1); }}
           />
         </div>
-        <Select
-          value={status || "__all__"}
-          onValueChange={(v) => { setStatus(v === "__all__" ? "" : v as ArchiveStatus); setServerPage(1); }}
-        >
-          <SelectTrigger className="w-48">
-            <Filter className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value || "__all__"} value={opt.value || "__all__"}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="bg-sidebar rounded-2xl">
+          <Select
+            value={status || "Todos"}
+            onValueChange={(v) => { setStatus(v === "Todos" ? "" : v as ArchiveStatus); setServerPage(1); }}
+          >
+            <SelectTrigger className="w-48">
+              <Filter className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value || "Todos"} value={opt.value || "Todos"}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -361,18 +363,18 @@ export default function ArchivesPage() {
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar archivo?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-sidebar">¿Eliminar archivo?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sidebar">
               Esta acción no se puede deshacer. <br />El archivo será eliminado permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="bg-sidebar/50">
+            <AlertDialogCancel className="border-2 border-sidebar cursor-pointer">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive cursor-pointer text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar
             </AlertDialogAction>

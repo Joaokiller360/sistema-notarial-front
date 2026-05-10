@@ -30,7 +30,7 @@ function actionColor(action: string): string {
   );
   return key
     ? ACTION_COLORS[key]
-    : "bg-amber-500/10 text-amber-400 border-amber-500/20";
+    : "bg-sidebar text-amber-400 border-amber-500/20";
 }
 
 function LogRow({ log }: { log: Log }) {
@@ -38,7 +38,7 @@ function LogRow({ log }: { log: Log }) {
   const hasDetails = !!log.details;
 
   return (
-    <div className="border-b border-border last:border-0">
+    <div className="border-b border-border last:border-0 bg-sidebar">
       <div
         className={cn(
           "grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 text-sm items-center",
@@ -147,11 +147,11 @@ export default function LogsPage() {
         title="Registros del Sistema"
         description="Auditoría completa de todas las acciones realizadas"
       >
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20">
-          <Shield className="w-3.5 h-3.5 text-purple-400" />
-          <span className="text-xs font-medium text-purple-400">Solo Super Admin</span>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sidebar border border-sidebar/30">
+          <Shield className="w-3.5 h-3.5 text-white" />
+          <span className="text-xs font-medium text-white">Solo Super Admin</span>
         </div>
-        <Button variant="outline" size="icon" onClick={load} disabled={isLoading}>
+        <Button variant="outline" size="icon" className="cursor-pointer" onClick={load} disabled={isLoading}>
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
         </Button>
       </PageHeader>

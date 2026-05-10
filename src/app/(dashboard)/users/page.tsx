@@ -151,7 +151,7 @@ export default function UsersPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 cursor-pointer"
                   onClick={() => handleToggleActive(row)}
                   title={row.isActive ? "Desactivar" : "Activar"}
                 >
@@ -163,7 +163,7 @@ export default function UsersPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 cursor-pointer"
                   onClick={() => router.push(`/users/${row.id}/edit`)}
                 >
                   <Pencil className="w-3.5 h-3.5" />
@@ -171,7 +171,7 @@ export default function UsersPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-destructive"
+                  className="h-8 w-8 cursor-pointer text-destructive"
                   onClick={() => setDeleteId(row.id)}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -187,14 +187,14 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Usuarios" description="Gestión de usuarios y permisos del sistema">
-        <ButtonLink href="/users/new">
+        <ButtonLink className="bg-sidebar" href="/users/new">
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Usuario
         </ButtonLink>
       </PageHeader>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+        <div className="bg-sidebar rounded-xl relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nombre o correo..."

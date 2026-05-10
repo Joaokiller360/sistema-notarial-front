@@ -69,7 +69,7 @@ export default function SecurityPage() {
       />
 
       <div className="max-w-2xl">
-        <Card className="border-border">
+        <Card className="border-border bg-sidebar">
           <CardHeader className="pb-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Shield className="w-4 h-4 text-primary" />
@@ -140,7 +140,7 @@ export default function SecurityPage() {
                 )}
               </div>
 
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" className="text-sidebar cursor-pointer" disabled={isSubmitting}>
                 {isSubmitting ? (
                   "Actualizando..."
                 ) : (

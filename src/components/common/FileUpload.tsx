@@ -120,8 +120,8 @@ export function FileUpload({
             : "border-border hover:border-primary/50 hover:bg-muted/30"
         )}
       >
-        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-          <Upload className="w-5 h-5 text-muted-foreground" />
+        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
+          <Upload className="w-5 h-5 text-sidebar" />
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-foreground">

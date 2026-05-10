@@ -75,9 +75,9 @@ export default function DashboardPage() {
 
   const quickLinks = [
     { label: "Nuevo Archivo", href: "/archives/new", icon: Plus },
-    { label: "Ver Archivos",  href: "/archives",     icon: FolderArchive },
-    { label: "Clientes",      href: "/clients",      icon: Users },
-    { label: "Usuarios",      href: "/users",        icon: Users },
+    { label: "Ver Archivos", href: "/archives", icon: FolderArchive },
+    { label: "Clientes", href: "/clients", icon: Users },
+    { label: "Usuarios", href: "/users", icon: Users },
   ];
 
   return (
@@ -87,7 +87,7 @@ export default function DashboardPage() {
         description={`Panel de control · ${ROLE_LABELS[user?.roles?.[0] || ""] || "Sin rol"}`}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard
           title="Total de Archivos"
           value={stats?.totalArchives ?? "—"}
@@ -120,8 +120,8 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent activity placeholder */}
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h3 className="text-sm font-semibold text-foreground mb-4">
+        <div className="rounded-lg border border-border bg-sidebar/50 p-6">
+          <h3 className="text-xl font-semibold mb-4">
             Resumen
           </h3>
           <div className="space-y-3">
@@ -145,7 +145,7 @@ export default function DashboardPage() {
                 <div key={i} className="flex items-start gap-3 py-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-sm text-foreground">{item.text}</p>
+                    <p className="text-md text-foreground">{item.text}</p>
                     {item.sub && (
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {item.sub}
@@ -159,7 +159,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick links — use Next.js Link to avoid full-page reload */}
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="rounded-lg border border-border bg-sidebar/50 p-6">
           <h3 className="text-sm font-semibold text-foreground mb-4">
             Accesos Rápidos
           </h3>
@@ -168,7 +168,7 @@ export default function DashboardPage() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-2 p-3 rounded-lg border border-border hover:border-primary/30 hover:bg-accent transition-all text-sm text-foreground"
+                className="flex items-center gap-2 p-3 rounded-lg border border-border hover:border-primary/30 hover:bg-sidebar/50 transition-all text-sm text-foreground"
               >
                 <item.icon className="w-4 h-4 text-primary" />
                 {item.label}

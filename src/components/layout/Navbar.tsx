@@ -43,7 +43,7 @@ export function Navbar() {
   const fullName = user ? `${user.firstName} ${user.lastName}` : "";
 
   return (
-    <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm flex items-center px-4 gap-4 sticky top-0 z-40">
+    <header className="h-16 border-b border-border bg-sidebar backdrop-blur-sm flex items-center px-4 gap-4 sticky top-0 z-40">
       <Button
         variant="ghost"
         size="icon"

@@ -9,7 +9,7 @@ export function MobileSidebar() {
 
   return (
     <Sheet open={sidebarMobileOpen} onOpenChange={closeMobileSidebar}>
-      <SheetContent side="left" className="p-0 w-64">
+      <SheetContent side="left" className="p-0 w-64 bg-sidebar/90">
         <Sidebar />
       </SheetContent>
     </Sheet>

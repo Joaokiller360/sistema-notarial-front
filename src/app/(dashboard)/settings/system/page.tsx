@@ -29,7 +29,7 @@ export default function SystemSettingsPage() {
         />
 
         <div className="max-w-2xl space-y-6">
-          <Card className="border-border">
+          <Card className="border-border bg-sidebar">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-primary" />
@@ -52,11 +52,11 @@ export default function SystemSettingsPage() {
                 <Label>Notario Titular</Label>
                 <Input placeholder="Dr. Juan Pérez" />
               </div>
-              <Button>Guardar Información</Button>
+              <Button className="text-sidebar cursor-pointer">Guardar Información</Button>
             </CardContent>
           </Card>
 
-          <Card className="border-border">
+          <Card className="border-border bg-sidebar">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Settings className="w-4 h-4 text-primary" />
@@ -72,7 +72,7 @@ export default function SystemSettingsPage() {
                 <Label>Tamaño máximo de PDF (MB)</Label>
                 <Input type="number" defaultValue={10} />
               </div>
-              <Button>Guardar Configuración</Button>
+              <Button className="text-sidebar cursor-pointer">Guardar Configuración</Button>
             </CardContent>
           </Card>
 
@@ -93,7 +93,9 @@ export default function SystemSettingsPage() {
                   <p className="text-sm font-medium">Limpiar registros de auditoría</p>
                   <p className="text-xs text-muted-foreground">Elimina logs de más de 90 días</p>
                 </div>
-                <Button variant="destructive" size="sm">Limpiar</Button>
+                <Button variant="destructive" size="sm" className="text-sidebar cursor-pointer">
+                  Limpiar
+                </Button>
               </div>
             </CardContent>
           </Card>

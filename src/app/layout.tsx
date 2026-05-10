@@ -1,21 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Roboto } from "next/font/google";
 import { Providers } from "@/providers/Providers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const roboto = Roboto({
+  variable: "--font-roboto",
+  subsets: ["latin"]
 });
 
 export const metadata: Metadata = {
   title: "Sistema de Gestión Notarial",
   description: "Plataforma profesional de gestión de archivos notariales",
+  icons: "/icon.jpeg",
 };
 
 export default function RootLayout({
@@ -26,7 +22,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} dark`}
+      className={`${roboto.variable} dark`}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background text-foreground antialiased">

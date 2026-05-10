@@ -36,7 +36,7 @@ const ARCHIVE_TYPES: { value: ArchiveType; label: string }[] = [
 
 const personSchema = z.object({
   nombresCompletos: z.string().min(2, "Nombre requerido").max(200),
-  cedulaORuc: z.string().min(10, "Mínimo 10 dígitos").max(13, "Máximo 13 dígitos"),
+  cedulaORuc: z.string().min(10, "Mínimo 10 dígitos").max(13, "Máximo 13 dígitos").or(z.literal("")),
   nacionalidad: z.string().min(2, "Nacionalidad requerida").max(100),
 });
 
@@ -100,11 +100,11 @@ function NewArchiveForm() {
           title="Nuevo Archivo"
           description="Registra un nuevo archivo notarial en el sistema"
         >
-          <ButtonLink href="/archives" variant="outline" size="sm">
+          <ButtonLink href="/archives" className="border-sidebar text-sidebar"  variant="default" size="sm">
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             Volver
           </ButtonLink>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button className="bg-sidebar hover:bg-sidebar/70 cursor-pointer" type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -122,7 +122,7 @@ function NewArchiveForm() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {/* Información general */}
-            <Card className="border-border">
+            <Card className="border-border bg-sidebar/50">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
@@ -199,7 +199,7 @@ function NewArchiveForm() {
             </Card>
 
             {/* Otorgantes */}
-            <Card className="border-border">
+            <Card className="border-border bg-sidebar/50">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
@@ -215,7 +215,7 @@ function NewArchiveForm() {
             </Card>
 
             {/* A favor de */}
-            <Card className="border-border">
+            <Card className="border-border bg-sidebar/50">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-primary" />
@@ -237,7 +237,7 @@ function NewArchiveForm() {
 
           {/* Columna lateral */}
           <div className="space-y-6">
-            <Card className="border-border">
+            <Card className="border-border bg-sidebar/50">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
@@ -253,7 +253,7 @@ function NewArchiveForm() {
               </CardContent>
             </Card>
 
-            <Card className="border-border bg-muted/20">
+            <Card className="border-border bg-sidebar/50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Resumen

@@ -24,6 +24,7 @@ export default function AuthLayout({
             documentos notariales.
           </p>
 
+          {/*
           <div className="mt-10 grid grid-cols-2 gap-4 text-left">
             {[
               { label: "Archivos Seguros", desc: "Gestión centralizada y segura" },
@@ -42,11 +43,12 @@ export default function AuthLayout({
               </div>
             ))}
           </div>
+          */}
         </div>
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-background">
+      <div className="flex-1 flex items-center justify-center p-6 bg-sidebar">
         <div className="w-full max-w-md">{children}</div>
       </div>
     </div>

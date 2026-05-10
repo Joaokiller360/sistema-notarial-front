@@ -26,11 +26,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard",  href: "/dashboard", icon: LayoutDashboard },
-  { label: "Archivos",   href: "/archives",  icon: FolderArchive },
-  { label: "Clientes",   href: "/clients",   icon: UserRound },
-  { label: "Usuarios",   href: "/users",     icon: Users, roles: ["SUPER_ADMIN", "NOTARIO"] },
-  { label: "Logs",       href: "/logs",      icon: ScrollText, roles: ["SUPER_ADMIN"] },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Archivos", href: "/archives", icon: FolderArchive },
+  { label: "Clientes", href: "/clients", icon: UserRound },
+  { label: "Usuarios", href: "/users", icon: Users, roles: ["SUPER_ADMIN", "NOTARIO"] },
+  { label: "Logs", href: "/logs", icon: ScrollText, roles: ["SUPER_ADMIN"] },
 ];
 
 const settingsItems: NavItem[] = [
@@ -60,21 +60,23 @@ export function Sidebar() {
       )}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-border h-16">
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-          <Building2 className="w-4 h-4 text-primary-foreground" />
-        </div>
-        {!sidebarCollapsed && (
-          <div className="overflow-hidden">
-            <p className="text-sm font-semibold text-sidebar-foreground truncate">
-              Sistema Notarial
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              Gestión de Archivos
-            </p>
+      <a href="/" className="flex items-center gap-3 px-4 py-5 border-b border-border h-16">
+        <div className="flex items-center gap-3 px-4 py-5 border-b border-border h-16">
+          <div className="flex-shrink-0 p-2 w-14 h-10 rounded-lg bg-primary flex items-center justify-center">
+            <img src="/logo-consejo-judicatura.png" alt="Logo" />
           </div>
-        )}
-      </div>
+          {!sidebarCollapsed && (
+            <div className="overflow-hidden">
+              <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                Sistema Notarial
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                Gestión de Archivos
+              </p>
+            </div>
+          )}
+        </div>
+      </a>
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
@@ -118,7 +120,7 @@ export function Sidebar() {
           "absolute -right-3 top-20 z-10 flex items-center justify-center",
           "w-6 h-6 rounded-full border border-border bg-sidebar",
           "text-muted-foreground hover:text-sidebar-foreground",
-          "hover:bg-sidebar-accent transition-colors shadow-md"
+          "hover:bg-sidebar transition-colors shadow-md"
         )}
         aria-label={sidebarCollapsed ? "Expandir" : "Colapsar"}
       >
@@ -148,14 +150,14 @@ function NavLink({ item, isActive, collapsed }: NavLinkProps) {
       className={cn(
         "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
         isActive
-          ? "bg-sidebar-accent text-sidebar-primary border border-sidebar-primary/20"
-          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          ? "bg-white text-sidebar border border-sidebar-primary/20"
+          : "text-sidebar-foreground hover:bg-white hover:text-sidebar"
       )}
     >
       <Icon
         className={cn(
           "flex-shrink-0 w-4 h-4",
-          isActive ? "text-sidebar-primary" : "text-muted-foreground"
+          isActive ? "text-sidebar" : "hover:text-sidebar-foreground"
         )}
       />
       {!collapsed && <span className="truncate">{item.label}</span>}
