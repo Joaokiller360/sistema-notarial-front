@@ -17,7 +17,7 @@ import { useSystemSettings } from "@/hooks";
 
 const fileConfigSchema = z.object({
   maxPdfSizeMb: z
-    .number({ invalid_type_error: "Debe ser un número" })
+    .number()
     .int("Debe ser un número entero")
     .min(1, "El mínimo es 1 MB")
     .max(500, "El máximo permitido es 500 MB"),
