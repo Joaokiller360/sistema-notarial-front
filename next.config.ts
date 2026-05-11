@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ||
-  "https://dev.joaobarres.dev";
+  "https://developer.joaobarres.dev";
 
 const nextConfig: NextConfig = {
   async rewrites() {
