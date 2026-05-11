@@ -24,7 +24,7 @@ export function StatCard({
 }: StatCardProps) {
   if (isLoading) {
     return (
-      <Card className={cn("border-border bg-sidebar/50", className)}>
+      <Card className={cn("border-border bg-card", className)}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -40,7 +40,7 @@ export function StatCard({
   }
 
   return (
-    <Card className={cn("border-border bg-sidebar/50", className)}>
+    <Card className={cn("border-border bg-card", className)}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>

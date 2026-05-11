@@ -67,7 +67,7 @@ export function GrantorForm({ fieldName, title, icon }: GrantorFormProps) {
         </div>
         <Button
           type="button"
-          className="bg-sidebar/80 cursor-pointer hover:bg-sidebar"
+          className="cursor-pointer"
           variant="default"
           size="sm"
           onClick={() =>
@@ -92,7 +92,7 @@ export function GrantorForm({ fieldName, title, icon }: GrantorFormProps) {
         {fields.map((field, index) => (
           <div
             key={field.id}
-            className="p-4 rounded-lg border border-border space-y-3 bg-sidebar/40"
+            className="p-4 rounded-lg border border-border space-y-3 bg-muted/50"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase">

@@ -141,11 +141,22 @@ export default function UsersPage() {
     {
       key: "role",
       label: "Rol",
-      render: (row) => (
-        <Badge variant="outline" className={`text-xs ${ROLE_COLORS[row.roles?.[0]]}`}>
-          {ROLE_LABELS[row.roles?.[0]] || row.roles?.[0]}
-        </Badge>
-      ),
+      render: (row) => {
+        const roles = (row.roles ?? []) as unknown as (string | { name?: string; type?: string })[];
+        if (roles.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {roles.map((r, i) => {
+              const key = typeof r === "string" ? r : (r.name ?? r.type ?? "");
+              return (
+                <Badge key={i} variant="outline" className={`text-xs ${ROLE_COLORS[key] ?? ""}`}>
+                  {ROLE_LABELS[key] || key}
+                </Badge>
+              );
+            })}
+          </div>
+        );
+      },
     },
     {
       key: "isActive",
@@ -212,14 +223,14 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Usuarios" description="Gestión de usuarios y permisos del sistema">
-        <ButtonLink className="bg-sidebar" href="/users/new">
+        <ButtonLink href="/users/new">
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Usuario
         </ButtonLink>
       </PageHeader>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="bg-sidebar rounded-xl relative flex-1">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nombre o correo..."

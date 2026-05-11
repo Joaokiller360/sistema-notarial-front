@@ -38,7 +38,7 @@ function LogRow({ log }: { log: Log }) {
   const hasDetails = !!log.details;
 
   return (
-    <div className="border-b border-border last:border-0 bg-sidebar">
+    <div className="border-b border-border last:border-0 bg-card">
       <div
         className={cn(
           "grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 text-sm items-center",

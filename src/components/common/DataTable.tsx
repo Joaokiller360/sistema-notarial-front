@@ -38,7 +38,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
-      <div className="bg-sidebar/80 rounded-lg border border-border overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
@@ -67,7 +67,7 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <div className="bg-sidebar/80 rounded-lg border border-border">
+      <div className="bg-card rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
@@ -92,7 +92,7 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="bg-sidebar/80 rounded-lg border border-border overflow-hidden">
+    <div className="bg-card rounded-lg border border-border overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="border-border hover:bg-transparent bg-muted/30">

@@ -301,7 +301,7 @@ export default function ArchivesPage() {
         description="Gestión y consulta de archivos del sistema"
       >
         {canCreateArchive() && (
-          <ButtonLink href={newHref} className="text-sidebar">
+          <ButtonLink href={newHref}>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo{activeType ? ` ${TYPE_LABELS[activeType]}` : " Archivo"}
           </ButtonLink>
@@ -309,7 +309,7 @@ export default function ArchivesPage() {
       </PageHeader>
 
       {/* Type tabs */}
-      <div className="flex bg-sidebar rounded-xl items-center gap-1 border-b border-border overflow-x-auto pb-0 scrollbar-none">
+      <div className="flex bg-card rounded-xl items-center gap-1 border border-border overflow-x-auto pb-0 scrollbar-none">
         {TYPE_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeType === tab.value;
@@ -338,7 +338,7 @@ export default function ArchivesPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 bg-sidebar rounded-md">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por código, nombre o cédula..."
@@ -347,7 +347,7 @@ export default function ArchivesPage() {
             onChange={(e) => { setSearch(e.target.value); setServerPage(1); }}
           />
         </div>
-        <div className="bg-sidebar rounded-2xl">
+        <div>
           <Select
             value={status || "Todos"}
             onValueChange={(v) => { setStatus(v === "Todos" ? "" : v as ArchiveStatus); setServerPage(1); }}
@@ -394,13 +394,13 @@ export default function ArchivesPage() {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!isDeleting) setDeleteId(open ? deleteId : null); }}>
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sidebar">¿Eliminar archivo?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sidebar">
+            <AlertDialogTitle>¿Eliminar archivo?</AlertDialogTitle>
+            <AlertDialogDescription>
               Esta acción no se puede deshacer. <br />El archivo será eliminado permanentemente del sistema.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="bg-sidebar/50">
-            <AlertDialogCancel disabled={isDeleting} className="border-2 border-sidebar cursor-pointer">
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} className="cursor-pointer">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction

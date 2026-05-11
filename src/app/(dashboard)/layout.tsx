@@ -14,10 +14,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <MobileSidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Navbar />
-        <div className="px-6 py-2 border-b border-border bg-sidebar">
+        <div className="px-6 py-2 border-b border-border bg-background">
           <Breadcrumbs />
         </div>
-        <main className="flex-1 overflow-y-auto scrollbar-thin bg-sidebar/40">
+        <main className="flex-1 overflow-y-auto scrollbar-thin bg-muted">
           <div className="p-6">{children}</div>
         </main>
       </div>

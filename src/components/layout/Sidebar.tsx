@@ -55,13 +55,13 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "relative flex flex-col h-screen border-r border-border bg-sidebar transition-all duration-300 ease-in-out",
+        "relative flex flex-col h-screen border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out",
         sidebarCollapsed ? "w-16" : "w-64"
       )}
     >
       {/* Logo */}
-      <a href="/" className="flex items-center gap-3 px-4 py-5 border-b border-border h-16">
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-border h-16">
+      <a href="/" className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border h-16">
+        <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border h-16">
           <div className="flex-shrink-0 p-2 w-14 h-10 rounded-lg bg-primary flex items-center justify-center">
             <img src="/logo-consejo-judicatura.png" alt="Logo" />
           </div>
@@ -70,7 +70,7 @@ export function Sidebar() {
               <p className="text-sm font-semibold text-sidebar-foreground truncate">
                 Sistema Notarial
               </p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-sidebar-foreground/60 truncate">
                 Gestión de Archivos
               </p>
             </div>
@@ -82,7 +82,7 @@ export function Sidebar() {
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
         <div className="space-y-1">
           {!sidebarCollapsed && (
-            <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <p className="px-3 mb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
               Principal
             </p>
           )}
@@ -96,9 +96,9 @@ export function Sidebar() {
           ))}
         </div>
 
-        <div className="space-y-1 pt-4 mt-4 border-t border-border">
+        <div className="space-y-1 pt-4 mt-4 border-t border-sidebar-border">
           {!sidebarCollapsed && (
-            <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <p className="px-3 mb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
               Configuración
             </p>
           )}
@@ -118,8 +118,8 @@ export function Sidebar() {
         onClick={toggleSidebar}
         className={cn(
           "absolute -right-3 top-20 z-10 flex items-center justify-center",
-          "w-6 h-6 rounded-full border border-border bg-sidebar",
-          "text-muted-foreground hover:text-sidebar-foreground",
+          "w-6 h-6 rounded-full border border-sidebar-border bg-sidebar",
+          "text-sidebar-foreground/60 hover:text-sidebar-foreground",
           "hover:bg-sidebar transition-colors shadow-md"
         )}
         aria-label={sidebarCollapsed ? "Expandir" : "Colapsar"}

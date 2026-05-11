@@ -94,7 +94,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+              className="absolute bg-background inset-y-0 right-0 flex items-center cursor-pointer pr-3 text-muted-foreground hover:text-foreground"
             >
               {showPassword ? (
                 <EyeOff className="w-4 h-4" />
@@ -111,7 +111,7 @@ export default function LoginPage() {
         {/* Submit */}
         <Button
           type="submit"
-          className="w-full text-sidebar"
+          className="w-full"
           disabled={isLoading}
           size="lg"
         >

@@ -124,11 +124,11 @@ export default function EditArchivePage() {
           title={`Editar ${archive.code}`}
           description="Modifica los datos del archivo notarial"
         >
-          <ButtonLink href={`/archives/${id}`} className="bg-sidebar/80 hover:bg-sidebar hover:text-sidebar" variant="default" size="sm">
+          <ButtonLink href={`/archives/${id}`} variant="outline" size="sm">
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             Cancelar
           </ButtonLink>
-          <Button className="bg-sidebar hover:bg-sidebar/80 cursor-pointer" type="submit" disabled={isSubmitting}>
+          <Button className="cursor-pointer" type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -145,7 +145,7 @@ export default function EditArchivePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="border-border bg-sidebar/50">
+            <Card className="border-border bg-card">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
@@ -204,7 +204,7 @@ export default function EditArchivePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-border bg-sidebar/50">
+            <Card className="border-border bg-card">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
@@ -217,7 +217,7 @@ export default function EditArchivePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-border bg-sidebar/50">
+            <Card className="border-border bg-card">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-primary" />
@@ -236,7 +236,7 @@ export default function EditArchivePage() {
           </div>
 
           <div className="space-y-6">
-            <Card className="border-border bg-sidebar/50">
+            <Card className="border-border bg-card">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
@@ -260,7 +260,7 @@ export default function EditArchivePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-border bg-sidebar/50">
+            <Card className="border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Resumen

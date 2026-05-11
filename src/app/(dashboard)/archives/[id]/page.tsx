@@ -98,12 +98,12 @@ export default function ArchiveDetailPage() {
         title={`Archivo ${archive.code}`}
         description={`Creado el ${format(new Date(archive.createdAt), "dd/MM/yyyy")}`}
       >
-        <ButtonLink href="/archives" className="bg-sidebar/50 hover:text-sidebar" variant="default" size="sm">
+        <ButtonLink href="/archives" variant="outline" size="sm">
           <ArrowLeft className="w-4 h-4 mr-1.5" />
           Volver
         </ButtonLink>
         {canEditArchive() && (
-          <ButtonLink className="bg-sidebar hover:text-sidebar" href={`/archives/${id}/edit`} size="sm">
+          <ButtonLink href={`/archives/${id}/edit`} size="sm">
             <Pencil className="w-4 h-4 mr-1.5" />
             Editar
           </ButtonLink>
@@ -112,7 +112,7 @@ export default function ArchiveDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border bg-sidebar/50">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <FileText className="w-4 h-4 text-primary" />
@@ -150,7 +150,7 @@ export default function ArchiveDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-sidebar/50">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Users className="w-4 h-4 text-primary" />
@@ -181,7 +181,7 @@ export default function ArchiveDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-sidebar/50">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-primary" />
@@ -214,7 +214,7 @@ export default function ArchiveDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-border bg-sidebar/50">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <FileText className="w-4 h-4 text-primary" />
@@ -272,7 +272,7 @@ export default function ArchiveDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-sidebar/50">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Metadatos

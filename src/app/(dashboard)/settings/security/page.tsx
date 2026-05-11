@@ -98,7 +98,7 @@ export default function SecurityPage() {
                   <button
                     type="button"
                     onClick={() => setShowCurrent((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-sidebar-foreground/50 hover:text-sidebar-foreground"
                   >
                     {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -124,7 +124,7 @@ export default function SecurityPage() {
                   <button
                     type="button"
                     onClick={() => setShowNew((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-sidebar-foreground/50 hover:text-sidebar-foreground"
                   >
                     {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -150,7 +150,7 @@ export default function SecurityPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirm((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-sidebar-foreground/50 hover:text-sidebar-foreground"
                   >
                     {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -162,7 +162,7 @@ export default function SecurityPage() {
 
               <Button
                 type="submit"
-                className="cursor-pointer text-sidebar"
+                className="cursor-pointer"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (

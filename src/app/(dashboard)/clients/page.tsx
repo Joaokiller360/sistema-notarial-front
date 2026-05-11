@@ -408,7 +408,7 @@ export default function ClientsPage() {
         description="Otorgantes y beneficiarios que han participado en trámites"
       >
         {!isLoading && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sidebar/80 border border-primary/20">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20">
             <UserRound className="w-3.5 h-3.5 text-primary" />
             <span className="text-md font-medium text-primary">{filtered.length} clientes</span>
           </div>
@@ -416,7 +416,7 @@ export default function ClientsPage() {
         <Button
           variant="outline"
           size="sm"
-          className="border-sidebar text-sidebar cursor-pointer"
+          className="cursor-pointer"
           onClick={() => setShowImportDialog(true)}
         >
           <Upload className="w-4 h-4 mr-1.5" />
@@ -424,7 +424,7 @@ export default function ClientsPage() {
         </Button>
         <Button
           size="sm"
-          className="bg-sidebar hover:bg-sidebar/80 cursor-pointer"
+          className="cursor-pointer"
           onClick={() => setShowAddDialog(true)}
         >
           <UserPlus className="w-4 h-4 mr-1.5" />
@@ -432,7 +432,7 @@ export default function ClientsPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative max-w-sm bg-sidebar/80 rounded-xl">
+      <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Buscar por nombre o cédula..."
@@ -478,7 +478,7 @@ export default function ClientsPage() {
 
       {/* ── Dialog: Nuevo Cliente ── */}
       <Dialog open={showAddDialog} onOpenChange={(v) => { setShowAddDialog(v); if (!v) setAddForm({ nombresCompletos: "", cedulaORuc: "", nacionalidad: "" }); }}>
-        <DialogContent className="sm:max-w-md bg-sidebar">
+        <DialogContent className="sm:max-w-md bg-card">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-primary" />
@@ -518,7 +518,7 @@ export default function ClientsPage() {
               Cancelar
             </Button>
             <Button
-              className="bg-sidebar hover:bg-sidebar/80 cursor-pointer"
+              className="cursor-pointer"
               onClick={handleAdd}
               disabled={isAdding || !addForm.nombresCompletos.trim() || !addForm.nacionalidad.trim()}
             >
@@ -538,7 +538,7 @@ export default function ClientsPage() {
         open={showImportDialog}
         onOpenChange={(v) => { setShowImportDialog(v); if (!v) resetImport(); }}
       >
-        <DialogContent className="sm:max-w-lg bg-sidebar">
+        <DialogContent className="sm:max-w-lg bg-card">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="w-4 h-4 text-primary" />
@@ -547,7 +547,7 @@ export default function ClientsPage() {
           </DialogHeader>
 
           <div className="space-y-5 py-2">
-            <div className="rounded-lg border border-border bg-sidebar/30 p-4 space-y-2">
+            <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-2">
               <p className="text-sm font-medium flex items-center gap-2">
                 <FileText className="w-4 h-4 text-primary" />
                 Paso 1 — Descarga la plantilla
@@ -590,7 +590,7 @@ export default function ClientsPage() {
                 </label>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-lg bg-sidebar/50 border border-border px-3 py-2">
+                  <div className="flex items-center justify-between rounded-lg bg-muted border border-border px-3 py-2">
                     <div className="flex items-center gap-2 text-sm">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       <span className="font-medium">{importFileName}</span>
@@ -609,7 +609,7 @@ export default function ClientsPage() {
                   </div>
 
                   <div className="rounded-lg border border-border overflow-hidden">
-                    <div className="bg-sidebar/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider grid grid-cols-3 gap-2">
+                    <div className="bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider grid grid-cols-3 gap-2">
                       <span>Nombre</span>
                       <span>Cédula/RUC</span>
                       <span>Nacionalidad</span>
@@ -626,7 +626,7 @@ export default function ClientsPage() {
                       ))}
                     </div>
                     {parsedRows.length > 50 && (
-                      <div className="px-3 py-1.5 text-xs text-muted-foreground text-center bg-sidebar/30">
+                      <div className="px-3 py-1.5 text-xs text-muted-foreground text-center bg-muted/50">
                         +{(parsedRows.length - 50).toLocaleString()} filas más...
                       </div>
                     )}
@@ -676,7 +676,7 @@ export default function ClientsPage() {
               Cancelar
             </Button>
             <Button
-              className="bg-sidebar hover:bg-sidebar/80 cursor-pointer"
+              className="cursor-pointer"
               onClick={handleImport}
               disabled={isImporting || parsedRows.length === 0}
             >

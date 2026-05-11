@@ -29,7 +29,7 @@ export default function SystemSettingsPage() {
         />
 
         <div className="max-w-2xl space-y-6">
-          <Card className="border-border bg-sidebar">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-primary" />
@@ -52,11 +52,11 @@ export default function SystemSettingsPage() {
                 <Label>Notario Titular</Label>
                 <Input placeholder="Dr. Juan Pérez" />
               </div>
-              <Button className="text-sidebar cursor-pointer">Guardar Información</Button>
+              <Button className="text-primary-foreground cursor-pointer">Guardar Información</Button>
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-sidebar">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Settings className="w-4 h-4 text-primary" />
@@ -65,14 +65,10 @@ export default function SystemSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Prefijo de Código de Archivo</Label>
-                <Input placeholder="NOT-" defaultValue="NOT-" />
-              </div>
-              <div className="space-y-1.5">
                 <Label>Tamaño máximo de PDF (MB)</Label>
                 <Input type="number" defaultValue={10} />
               </div>
-              <Button className="text-sidebar cursor-pointer">Guardar Configuración</Button>
+              <Button className="text-primary-foreground cursor-pointer">Guardar Configuración</Button>
             </CardContent>
           </Card>
 
@@ -93,7 +89,7 @@ export default function SystemSettingsPage() {
                   <p className="text-sm font-medium">Limpiar registros de auditoría</p>
                   <p className="text-xs text-muted-foreground">Elimina logs de más de 90 días</p>
                 </div>
-                <Button variant="destructive" size="sm" className="text-sidebar cursor-pointer">
+                <Button variant="destructive" size="sm" className="text-primary-foreground cursor-pointer">
                   Limpiar
                 </Button>
               </div>

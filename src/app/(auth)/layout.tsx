@@ -45,7 +45,7 @@ export default function AuthLayout({
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-sidebar">
+      <div className="flex-1 flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-md">{children}</div>
       </div>
     </div>

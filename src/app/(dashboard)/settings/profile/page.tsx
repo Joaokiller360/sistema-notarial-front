@@ -45,7 +45,6 @@ export default function ProfilePage() {
     },
   });
 
-  // Sync form if the store user changes (e.g. after a successful update)
   useEffect(() => {
     if (user) {
       reset({ firstName: user.firstName, lastName: user.lastName });
@@ -55,7 +54,6 @@ export default function ProfilePage() {
   const onSubmit = async (data: ProfileFormData) => {
     try {
       await updateProfile({ firstName: data.firstName, lastName: data.lastName });
-      // reset dirty state so button disables again after save
       reset({ firstName: data.firstName, lastName: data.lastName });
     } catch {
       // toast already shown by the hook
@@ -151,7 +149,7 @@ export default function ProfilePage() {
 
               <Button
                 type="submit"
-                className="cursor-pointer text-sidebar"
+                className="cursor-pointer"
                 disabled={isSubmitting || !isDirty}
               >
                 {isSubmitting ? (

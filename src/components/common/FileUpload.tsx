@@ -265,7 +265,7 @@ export function FileUpload({
         {isValidating ? (
           <>
             <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-              <Loader2 className="w-5 h-5 text-sidebar animate-spin" />
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-foreground">Verificando seguridad...</p>
@@ -277,7 +277,7 @@ export function FileUpload({
         ) : (
           <>
             <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-              <Upload className="w-5 h-5 text-sidebar" />
+              <Upload className="w-5 h-5 text-primary" />
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-foreground">Arrastra tu PDF aquí</p>
