@@ -46,7 +46,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
 ### Autenticación (públicas)
 | Ruta | Descripción |
 |---|---|
-| `/login` | Inicio de sesión |
+| `/login` | Inicio de sesión. |
 | `/forgot-password` | Recuperar contraseña |
 | `/reset-password?token=xxx` | Restablecer contraseña |
 
