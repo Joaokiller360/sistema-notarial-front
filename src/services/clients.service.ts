@@ -18,7 +18,7 @@ export const clientsService = {
     const response = await apiClient.get("/clients", { params: filters });
     const body = response.data;
 
-    console.log("[clients.getAll] raw response:", JSON.stringify(body).slice(0, 500));
+    //console.log("[clients.getAll] raw response:", JSON.stringify(body).slice(0, 500));
 
     // { data: { data: [...], total, page, totalPages, limit } }
     if (body?.data && Array.isArray(body.data?.data)) {
@@ -55,7 +55,7 @@ export const clientsService = {
         totalPages: body.totalPages ?? Math.ceil((body.total ?? body.items.length) / (body.limit ?? 15)),
       };
     }
-    console.warn("[clients.getAll] unrecognized response shape, full body:", body);
+    //console.warn("[clients.getAll] unrecognized response shape, full body:", body);
     return { data: [], total: 0, page: 1, limit: 15, totalPages: 0 };
   },
 
