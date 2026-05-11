@@ -37,8 +37,8 @@ export default function LoginPage() {
       {/* Header */}
       <div className="text-center lg:text-left">
         <div className="flex items-center justify-center lg:justify-start gap-2 mb-6 lg:hidden">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Building2 className="w-4 h-4 text-primary-foreground" />
+          <div className="w-28 p-2 h-auto rounded-lg bg-primary flex items-center justify-center">
+            <img src="./logo-consejo-judicatura.png" alt="logo-consejo-judicatura" className="w-full h-full object-contain" />
           </div>
           <span className="font-semibold text-sm">Sistema Notarial</span>
         </div>
