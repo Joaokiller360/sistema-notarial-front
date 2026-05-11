@@ -1,9 +1,8 @@
 "use client";
 
-import { useFieldArray, useFormContext, Controller } from "react-hook-form";
+import { useFieldArray, useFormContext, Controller, useWatch } from "react-hook-form";
 import { Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -12,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ClientSearchInput } from "./ClientSearchInput";
+import type { Client } from "@/types";
 
 const NATIONALITIES = [
   "Ecuatoriana",
@@ -36,6 +37,96 @@ const NATIONALITIES = [
 
 const DEFAULT_NATIONALITY = "Ecuatoriana";
 
+interface GrantorRowProps {
+  fieldName: "grantors" | "beneficiaries";
+  index: number;
+  onRemove: () => void;
+  errors?: Record<string, { message?: string }>;
+}
+
+function GrantorRow({ fieldName, index, onRemove, errors }: GrantorRowProps) {
+  const { control, setValue } = useFormContext();
+
+  const nombresValue: string = useWatch({ control, name: `${fieldName}.${index}.nombresCompletos` }) ?? "";
+  const cedulaValue: string  = useWatch({ control, name: `${fieldName}.${index}.cedulaORuc` }) ?? "";
+
+  const handleClientSelect = (client: Client) => {
+    setValue(`${fieldName}.${index}.nombresCompletos`, client.nombresCompletos, { shouldValidate: true });
+    setValue(`${fieldName}.${index}.cedulaORuc`,       client.cedulaORuc ?? "",  { shouldValidate: true });
+    setValue(`${fieldName}.${index}.nacionalidad`,     client.nacionalidad || DEFAULT_NATIONALITY, { shouldValidate: true });
+  };
+
+  return (
+    <div className="p-4 rounded-lg border border-border space-y-3 bg-muted/50">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground uppercase">
+          Registro #{index + 1}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+          onClick={onRemove}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="sm:col-span-1 space-y-1.5">
+          <Label className="text-xs">Nombres Completos</Label>
+          <ClientSearchInput
+            value={nombresValue}
+            onChange={(val) => setValue(`${fieldName}.${index}.nombresCompletos`, val, { shouldValidate: true })}
+            onSelect={handleClientSelect}
+            placeholder="Ej: Juan Carlos Pérez"
+          />
+          {errors?.nombresCompletos?.message && (
+            <p className="text-xs text-destructive">{errors.nombresCompletos.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Cédula / RUC</Label>
+          <ClientSearchInput
+            value={cedulaValue}
+            onChange={(val) => setValue(`${fieldName}.${index}.cedulaORuc`, val, { shouldValidate: true })}
+            onSelect={handleClientSelect}
+            placeholder="Ej: 0912345678"
+          />
+          {errors?.cedulaORuc?.message && (
+            <p className="text-xs text-destructive">{errors.cedulaORuc.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Nacionalidad</Label>
+          <Controller
+            control={control}
+            name={`${fieldName}.${index}.nacionalidad`}
+            render={({ field: f }) => (
+              <Select value={f.value || DEFAULT_NATIONALITY} onValueChange={f.onChange}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {NATIONALITIES.map((n) => (
+                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors?.nacionalidad?.message && (
+            <p className="text-xs text-destructive">{errors.nacionalidad.message}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface GrantorFormProps {
   fieldName: "grantors" | "beneficiaries";
   title: string;
@@ -43,12 +134,7 @@ interface GrantorFormProps {
 }
 
 export function GrantorForm({ fieldName, title, icon }: GrantorFormProps) {
-  const {
-    register,
-    control,
-    formState: { errors },
-  } = useFormContext();
-
+  const { control, formState: { errors } } = useFormContext();
   const { fields, append, remove } = useFieldArray({ control, name: fieldName });
 
   const fieldErrors = errors[fieldName] as
@@ -70,9 +156,7 @@ export function GrantorForm({ fieldName, title, icon }: GrantorFormProps) {
           className="cursor-pointer"
           variant="default"
           size="sm"
-          onClick={() =>
-            append({ nombresCompletos: "", cedulaORuc: "", nacionalidad: DEFAULT_NATIONALITY })
-          }
+          onClick={() => append({ nombresCompletos: "", cedulaORuc: "", nacionalidad: DEFAULT_NATIONALITY })}
         >
           <Plus className="w-3.5 h-3.5 mr-1.5" />
           Agregar
@@ -90,85 +174,13 @@ export function GrantorForm({ fieldName, title, icon }: GrantorFormProps) {
 
       <div className="space-y-3">
         {fields.map((field, index) => (
-          <div
+          <GrantorRow
             key={field.id}
-            className="p-4 rounded-lg border border-border space-y-3 bg-muted/50"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">
-                Registro #{index + 1}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-1 space-y-1.5">
-                <Label className="text-xs">Nombres Completos</Label>
-                <Input
-                  placeholder="Ej: Juan Carlos Pérez"
-                  className="h-8 text-sm"
-                  {...register(`${fieldName}.${index}.nombresCompletos`)}
-                />
-                {fieldErrors?.[index]?.nombresCompletos?.message && (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors[index].nombresCompletos.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs">Cédula / RUC</Label>
-                <Input
-                  placeholder="Ej: 0912345678"
-                  className="h-8 text-sm"
-                  {...register(`${fieldName}.${index}.cedulaORuc`)}
-                />
-                {fieldErrors?.[index]?.cedulaORuc?.message && (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors[index].cedulaORuc.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs">Nacionalidad</Label>
-                <Controller
-                  control={control}
-                  name={`${fieldName}.${index}.nacionalidad`}
-                  render={({ field: f }) => (
-                    <Select
-                      value={f.value || DEFAULT_NATIONALITY}
-                      onValueChange={f.onChange}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Seleccionar..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {NATIONALITIES.map((n) => (
-                          <SelectItem key={n} value={n}>
-                            {n}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {fieldErrors?.[index]?.nacionalidad?.message && (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors[index].nacionalidad.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+            fieldName={fieldName}
+            index={index}
+            onRemove={() => remove(index)}
+            errors={fieldErrors?.[index]}
+          />
         ))}
       </div>
     </div>
