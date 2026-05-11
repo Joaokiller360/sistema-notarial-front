@@ -13,8 +13,8 @@ export default function AuthLayout({
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
         <div className="relative z-10 text-center max-w-md">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mx-auto mb-6">
-            <Building2 className="w-8 h-8 text-primary" />
+          <div className="flex items-center justify-center w-42 h-auto p-2.5 rounded-2xl bg-primary/10 border border-primary/20 mx-auto mb-6">
+            <img src="./logo-consejo-judicatura.png" alt="logo-consejo-judicatura" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-3">
             Sistema de Gestión Notarial
