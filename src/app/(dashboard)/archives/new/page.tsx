@@ -78,13 +78,19 @@ function NewArchiveForm() {
   const typeValue = watch("type");
 
   const onSubmit = async (data: ArchiveFormData) => {
+    const cleanPerson = (p: { nombresCompletos: string; cedulaORuc: string; nacionalidad: string }) => ({
+      nombresCompletos: p.nombresCompletos,
+      ...(p.cedulaORuc ? { cedulaORuc: p.cedulaORuc } : {}),
+      nacionalidad: p.nacionalidad,
+    });
+
     const result = await createArchive({
       type: data.type,
       code: data.code,
-      documentDate: data.documentDate || undefined,
+      documentDate: data.documentDate ? new Date(data.documentDate).toISOString() : undefined,
       observations: data.observations,
-      grantors: data.grantors,
-      beneficiaries: data.beneficiaries,
+      grantors: data.grantors.map(cleanPerson),
+      beneficiaries: data.beneficiaries.map(cleanPerson),
       pdf: (data.pdf as File) || undefined,
     });
     if (result) router.push(`/archives?type=${data.type}`);

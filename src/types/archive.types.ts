@@ -4,14 +4,14 @@ export type ArchiveType = "A" | "C" | "D" | "O" | "P";
 export interface Grantor {
   id?: string;
   nombresCompletos: string;
-  cedulaORuc: string;
+  cedulaORuc?: string;
   nacionalidad: string;
 }
 
 export interface Beneficiary {
   id?: string;
   nombresCompletos: string;
-  cedulaORuc: string;
+  cedulaORuc?: string;
   nacionalidad: string;
 }
 

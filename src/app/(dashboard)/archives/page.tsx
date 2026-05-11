@@ -137,12 +137,12 @@ export default function ArchivesPage() {
           a.grantors.some(
             (g) =>
               g.nombresCompletos.toLowerCase().includes(q) ||
-              g.cedulaORuc.toLowerCase().includes(q)
+              (g.cedulaORuc ?? "").toLowerCase().includes(q)
           ) ||
           a.beneficiaries.some(
             (b) =>
               b.nombresCompletos.toLowerCase().includes(q) ||
-              b.cedulaORuc.toLowerCase().includes(q)
+              (b.cedulaORuc ?? "").toLowerCase().includes(q)
           )
       );
     }

@@ -35,7 +35,7 @@ const TYPE_COLORS: Record<ArchiveType, string> = {
 
 interface ClientInfo {
   nombresCompletos: string;
-  cedulaORuc: string;
+  cedulaORuc?: string;
   nacionalidad?: string;
 }
 

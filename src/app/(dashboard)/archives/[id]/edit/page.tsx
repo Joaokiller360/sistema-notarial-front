@@ -37,7 +37,7 @@ const ARCHIVE_TYPES: { value: ArchiveType; label: string }[] = [
 
 const personSchema = z.object({
   nombresCompletos: z.string().min(2, "Nombre requerido").max(200),
-  cedulaORuc: z.string().min(10, "Mínimo 10 dígitos").max(13, "Máximo 13 dígitos"),
+  cedulaORuc: z.string().min(10, "Mínimo 10 dígitos").max(13, "Máximo 13 dígitos").or(z.literal("")),
   nacionalidad: z.string().min(2, "Nacionalidad requerida").max(100),
 });
 
@@ -96,13 +96,19 @@ export default function EditArchivePage() {
   const pdf = watch("pdf");
 
   const onSubmit = async (data: ArchiveFormData) => {
+    const cleanPerson = (p: { nombresCompletos: string; cedulaORuc: string; nacionalidad: string }) => ({
+      nombresCompletos: p.nombresCompletos,
+      ...(p.cedulaORuc ? { cedulaORuc: p.cedulaORuc } : {}),
+      nacionalidad: p.nacionalidad,
+    });
+
     const result = await updateArchive(id, {
       type: data.type,
       code: data.code,
-      documentDate: data.documentDate || undefined,
+      documentDate: data.documentDate ? new Date(data.documentDate).toISOString() : undefined,
       observations: data.observations,
-      grantors: data.grantors,
-      beneficiaries: data.beneficiaries,
+      grantors: data.grantors.map(cleanPerson),
+      beneficiaries: data.beneficiaries.map(cleanPerson),
       pdf: (data.pdf as File) || undefined,
     });
     if (result) router.push(`/archives/${id}`);

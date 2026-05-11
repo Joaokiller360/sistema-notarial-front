@@ -42,15 +42,15 @@ function extractClients(archives: Archive[]): DerivedClient[] {
 
   for (const archive of archives) {
     for (const g of archive.grantors) {
-      const key = g.cedulaORuc;
+      const key = g.cedulaORuc ?? g.nombresCompletos;
       const cur = map.get(key);
       if (cur) {
         cur.asGrantor++;
       } else {
         map.set(key, {
-          id: g.cedulaORuc,
+          id: key,
           nombresCompletos: g.nombresCompletos,
-          cedulaORuc: g.cedulaORuc,
+          cedulaORuc: g.cedulaORuc ?? "",
           nacionalidad: g.nacionalidad,
           asGrantor: 1,
           asBeneficiary: 0,
@@ -58,15 +58,15 @@ function extractClients(archives: Archive[]): DerivedClient[] {
       }
     }
     for (const b of archive.beneficiaries) {
-      const key = b.cedulaORuc;
+      const key = b.cedulaORuc ?? b.nombresCompletos;
       const cur = map.get(key);
       if (cur) {
         cur.asBeneficiary++;
       } else {
         map.set(key, {
-          id: b.cedulaORuc,
+          id: key,
           nombresCompletos: b.nombresCompletos,
-          cedulaORuc: b.cedulaORuc,
+          cedulaORuc: b.cedulaORuc ?? "",
           nacionalidad: b.nacionalidad,
           asGrantor: 0,
           asBeneficiary: 1,
@@ -196,11 +196,11 @@ export default function ClientsPage() {
       let currentPage = 1;
       let totalPages = 1;
       do {
-        const result = await archivesService.getAll({ page: currentPage, limit: 50 });
+        const result = await archivesService.getAll({ page: currentPage, limit: 100 });
         collected = collected.concat(result.data);
         totalPages = result.totalPages;
         currentPage++;
-      } while (currentPage <= totalPages && collected.length < 500);
+      } while (currentPage <= totalPages);
       setAllArchives(collected);
     } catch {
       // silent
@@ -393,7 +393,7 @@ export default function ClientsPage() {
           variant="outline"
           size="sm"
           className="h-7 text-xs"
-          onClick={() => router.push(`/clients/${encodeURIComponent(row.cedulaORuc)}`)}
+          onClick={() => router.push(`/clients/${encodeURIComponent(row.cedulaORuc || row.nombresCompletos)}`)}
         >
           Ver trámites
         </Button>
@@ -410,7 +410,7 @@ export default function ClientsPage() {
         {!isLoading && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20">
             <UserRound className="w-3.5 h-3.5 text-primary" />
-            <span className="text-md font-medium text-primary">{filtered.length} clientes</span>
+            <span className="text-md font-medium text-primary">{clients.length} clientes</span>
           </div>
         )}
         <Button
