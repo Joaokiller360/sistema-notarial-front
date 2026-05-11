@@ -1,34 +1,31 @@
 # Sistema de Gestión Notarial — Frontend
 
-Plataforma web profesional para la gestión integral de archivos y documentos notariales. Interfaz moderna estilo Stripe / Linear / Vercel Dashboard.
+Plataforma web para la gestión integral de archivos, clientes y usuarios notariales. Interfaz moderna construida con Next.js 16 y App Router.
 
 ---
 
 ## Stack Tecnológico
 
-| Tecnología | Propósito |
-|---|---|
-| **Next.js 16** | Framework con App Router |
-| **TypeScript** | Tipado estático |
-| **TailwindCSS v4** | Estilos utilitarios |
-| **Shadcn/ui v4** | Componentes UI (Base UI) |
-| **Zustand** | Estado global |
-| **React Hook Form + Zod** | Formularios y validación |
-| **Axios** | Cliente HTTP con interceptors |
-| **Sonner** | Toast notifications |
+| Tecnología | Versión | Propósito |
+|---|---|---|
+| **Next.js** | 16.2.6 | Framework con App Router |
+| **React** | 19.2.4 | UI |
+| **TypeScript** | ^5 | Tipado estático |
+| **TailwindCSS** | v4 | Estilos utilitarios |
+| **Shadcn/ui** | v4 (Base UI) | Componentes UI |
+| **Zustand** | ^5 | Estado global |
+| **React Hook Form** | ^7 | Formularios |
+| **Zod** | ^4 | Validación de esquemas |
+| **Axios** | ^1 | Cliente HTTP con interceptors |
+| **Sonner** | ^2 | Toast notifications |
 
 ---
 
 ## Instalación
 
 ```bash
-# Instalar dependencias
 npm install
-
-# Configurar variables de entorno
 cp .env.local.example .env.local
-
-# Desarrollo
 npm run dev
 ```
 
@@ -39,9 +36,7 @@ Abrir [http://localhost:3000](http://localhost:3000)
 ## Variables de Entorno
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3001/api
-NEXT_PUBLIC_JWT_EXPIRES_IN=3600
-NEXT_PUBLIC_APP_NAME="Sistema de Gestión Notarial"
+NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
 ```
 
 ---
@@ -49,33 +44,39 @@ NEXT_PUBLIC_APP_NAME="Sistema de Gestión Notarial"
 ## Rutas del Sistema
 
 ### Autenticación (públicas)
-- `/login` — Inicio de sesión
-- `/forgot-password` — Recuperar contraseña
-- `/reset-password?token=xxx` — Restablecer contraseña
+| Ruta | Descripción |
+|---|---|
+| `/login` | Inicio de sesión |
+| `/forgot-password` | Recuperar contraseña |
+| `/reset-password?token=xxx` | Restablecer contraseña |
 
-### Dashboard (protegidas)
-- `/dashboard` — Panel principal
-- `/archives` — Listado de archivos
-- `/archives/new` — Crear archivo
-- `/archives/:id` — Ver detalle
-- `/archives/:id/edit` — Editar archivo
-- `/users` — Gestión de usuarios *(SUPER_ADMIN, NOTARIO)*
-- `/users/new` — Crear usuario
-- `/users/:id/edit` — Editar usuario
-- `/settings/profile` — Perfil
-- `/settings/security` — Cambio de contraseña
-- `/settings/system` — Config. del sistema *(SUPER_ADMIN)*
+### Dashboard (protegidas — requieren JWT)
+| Ruta | Descripción | Roles |
+|---|---|---|
+| `/dashboard` | Panel principal con métricas | Todos |
+| `/archives` | Listado de archivos | Todos |
+| `/archives/new` | Crear archivo + subir PDF | SUPER_ADMIN, NOTARIO, ARCHIVADOR |
+| `/archives/:id` | Ver detalle del archivo | Todos |
+| `/archives/:id/edit` | Editar archivo + reemplazar PDF | SUPER_ADMIN, NOTARIO, ARCHIVADOR |
+| `/clients` | Listado de clientes | Todos |
+| `/clients/:id` | Ver detalle del cliente | Todos |
+| `/users` | Gestión de usuarios | SUPER_ADMIN, NOTARIO |
+| `/users/new` | Crear usuario | SUPER_ADMIN, NOTARIO |
+| `/users/:id/edit` | Editar usuario | SUPER_ADMIN, NOTARIO |
+| `/settings/profile` | Editar perfil personal | Todos |
+| `/settings/security` | Cambio de contraseña | Todos |
+| `/settings/system` | Configuración del sistema | SUPER_ADMIN |
 
 ---
 
 ## Roles RBAC
 
-| Rol | Nivel de acceso |
+| Rol | Permisos |
 |---|---|
-| `SUPER_ADMIN` | Acceso total |
-| `NOTARIO` | Archivos + Usuarios |
-| `MATRIZADOR` | Crear/editar archivos |
-| `ARCHIVADOR` | Solo visualización |
+| `SUPER_ADMIN` | Acceso total, configuración del sistema |
+| `NOTARIO` | Archivos + gestión de usuarios |
+| `ARCHIVADOR` | Crear y editar archivos |
+| `MATRIZADOR` | Solo visualización de archivos |
 
 ---
 
@@ -83,51 +84,74 @@ NEXT_PUBLIC_APP_NAME="Sistema de Gestión Notarial"
 
 ```
 src/
-├── app/            # Páginas (App Router)
-├── api/            # Cliente Axios
-├── components/     # UI reutilizable
-├── guards/         # Auth + Role guards
-├── hooks/          # useAuth, useArchives, useUsers, usePermissions
-├── middleware.ts   # Protección de rutas
-├── providers/      # Providers globales
-├── services/       # Llamadas al backend
-├── store/          # Estado global (Zustand)
-├── types/          # Interfaces TypeScript
-└── utils/          # Utilidades
+├── app/
+│   ├── (auth)/           # Login, forgot-password, reset-password
+│   └── (dashboard)/      # Páginas protegidas
+│       ├── archives/
+│       ├── clients/
+│       ├── users/
+│       ├── dashboard/
+│       └── settings/
+├── api/
+│   └── axios.client.ts   # Cliente Axios con refresh token automático
+├── components/
+│   ├── common/           # FileUpload, GrantorForm, ClientSearchInput, etc.
+│   ├── layout/           # Navbar, Sidebar
+│   └── ui/               # Shadcn components
+├── guards/               # RoleGuard, AuthGuard
+├── hooks/
+│   ├── useAuth.ts
+│   ├── useArchives.ts
+│   ├── useUsers.ts
+│   ├── usePermissions.ts
+│   ├── useSystemSettings.ts
+│   └── useTokenRefresh.ts
+├── middleware.ts          # Protección de rutas por JWT
+├── providers/            # Providers globales (Auth, Toast)
+├── services/             # Llamadas al backend
+│   ├── archives.service.ts
+│   ├── auth.service.ts
+│   ├── clients.service.ts
+│   ├── logs.service.ts
+│   ├── roles.service.ts
+│   ├── system.service.ts
+│   └── users.service.ts
+├── store/
+│   ├── auth.store.ts     # Estado de autenticación (Zustand + persist)
+│   └── ui.store.ts
+├── types/                # Interfaces TypeScript
+└── utils/                # tokenUtils, etc.
 ```
+
+---
+
+## Funcionalidades Principales
+
+### Archivos
+- CRUD completo con tipos: Arrendamiento, Certificación, Diligencia, Protocolo, Otro
+- Subida y reemplazo de PDF con validación de seguridad (firma, integridad, malware)
+- Tamaño máximo de PDF configurable desde la sección de sistema
+- Otorgantes y beneficiarios con **autocompletado** desde la base de clientes
+
+### Clientes
+- Búsqueda por nombre o cédula/RUC
+- Historial de archivos como otorgante o beneficiario
+
+### Configuración del Sistema *(SUPER_ADMIN)*
+- Tamaño máximo de PDF (1–500 MB) guardado en backend (`GET/PATCH /system/config`)
+
+### Seguridad
+- JWT con refresh token automático (interceptor Axios)
+- Guards de autenticación y rol en cada ruta
+- Validación de PDF en cliente: extensión, MIME, firma `%PDF-`, `%%EOF`, y escaneo de construcciones peligrosas (JavaScript, OpenAction, Launch, XFA, etc.)
 
 ---
 
 ## Comandos
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev      # Desarrollo
+npm run build    # Build de producción
+npm run start    # Producción local
+npm run lint     # ESLint
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# sistema-notarial-front
