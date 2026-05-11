@@ -4,6 +4,16 @@ Plataforma web para la gestión integral de archivos, clientes y usuarios notari
 
 ---
 
+## Capturas de Pantalla
+
+### Inicio de Sesión
+![Inicio de Sesión](/screenshots/login-page.png)
+
+### Dashboard
+![Dashboard](/screenshots/dashboard-page.png)
+
+---
+
 ## Stack Tecnológico
 
 | Tecnología | Versión | Propósito |
