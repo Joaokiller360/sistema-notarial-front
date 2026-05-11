@@ -7,10 +7,10 @@ Plataforma web para la gestión integral de archivos, clientes y usuarios notari
 ## Capturas de Pantalla
 
 ### Inicio de Sesión
-![Inicio de Sesión](src/assets/screenshots/login-page.png)
+![Inicio de Sesión](https://github.com/Joaokiller360/sistema-notarial-front/blob/development/public/screenshots/login-page.png)
 
 ### Dashboard
-![Dashboard](src/assets/screenshots/dashboard-page.png)
+![Dashboard](https://github.com/Joaokiller360/sistema-notarial-front/blob/development/public/screenshots/dashboard-page.png)
 
 ---
 
