@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   Download,
   ExternalLink,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PageLoader } from "@/components/common/LoadingSpinner";
 import { useArchives, usePermissions } from "@/hooks";
+import { archivesService } from "@/services";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { ArchiveType } from "@/types";
@@ -47,6 +49,31 @@ export default function ArchiveDetailPage() {
   const router = useRouter();
   const { archive, isLoading, fetchArchive } = useArchives();
   const { canEditArchive } = usePermissions();
+  const [pdfLoading, setPdfLoading] = useState<"view" | "download" | null>(null);
+
+  const handlePdf = async (mode: "view" | "download") => {
+    if (!archive?.pdfUrl) return;
+    setPdfLoading(mode);
+    try {
+      const url = await archivesService.getPdfUrl(archive.pdfUrl);
+      if (mode === "view") {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = archive.pdfFileName || "documento.pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ? `Error ${status ?? ""}: ${msg}` : "No se pudo obtener el documento");
+    } finally {
+      setPdfLoading(null);
+    }
+  };
 
   useEffect(() => {
     if (id) fetchArchive(id);
@@ -203,30 +230,38 @@ export default function ArchiveDetailPage() {
                       <p className="text-sm font-medium truncate">
                         {archive.pdfFileName || "documento.pdf"}
                       </p>
-                      <p className="text-xs text-muted-foreground">PDF</p>
+                      <p className="text-xs text-muted-foreground">PDF · URL temporal</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <ButtonLink
-                      href={archive.pdfUrl}
+                    <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
-                      external
+                      className="flex-1 cursor-pointer"
+                      disabled={pdfLoading !== null}
+                      onClick={() => handlePdf("view")}
                     >
-                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                      {pdfLoading === "view" ? (
+                        <span className="w-3.5 h-3.5 mr-1.5 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
+                      ) : (
+                        <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                      )}
                       Ver
-                    </ButtonLink>
-                    <ButtonLink
-                      href={archive.pdfUrl}
+                    </Button>
+                    <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
-                      download
+                      className="flex-1 cursor-pointer"
+                      disabled={pdfLoading !== null}
+                      onClick={() => handlePdf("download")}
                     >
-                      <Download className="w-3.5 h-3.5 mr-1.5" />
+                      {pdfLoading === "download" ? (
+                        <span className="w-3.5 h-3.5 mr-1.5 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                      )}
                       Descargar
-                    </ButtonLink>
+                    </Button>
                   </div>
                 </div>
               ) : (

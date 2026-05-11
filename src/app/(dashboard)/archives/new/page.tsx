@@ -2,12 +2,12 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, Suspense } from "react";
+import { Suspense } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Save, FileText, Users, UserCheck, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, FileText, Users, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
@@ -44,10 +44,11 @@ const personSchema = z.object({
 
 const archiveSchema = z.object({
   type: z.enum(["A", "C", "D", "O", "P"]),
-  code: z.string().min(3, "Mínimo 3 caracteres").max(20, "Máximo 20 caracteres"),
+  code: z.string().min(1, "El código es requerido").max(17, "Máximo 17 caracteres"),
+  documentDate: z.string().optional(),
   observations: z.string().max(2000).optional(),
-  grantors: z.array(personSchema).min(1, "Agrega al menos un otorgante"),
-  beneficiaries: z.array(personSchema).min(1, "Agrega al menos un beneficiario"),
+  grantors: z.array(personSchema),
+  beneficiaries: z.array(personSchema),
   pdf: z.custom<File | null>().optional(),
 });
 
@@ -58,15 +59,16 @@ function NewArchiveForm() {
   const searchParams = useSearchParams();
   const defaultType = searchParams.get("type") as ArchiveType | null;
 
-  const { createArchive, isSubmitting, generateCode } = useArchives();
+  const { createArchive, isSubmitting, pdfUploadProgress } = useArchives();
 
   const methods = useForm<ArchiveFormData>({
     resolver: zodResolver(archiveSchema),
     defaultValues: {
       type: defaultType || undefined,
       code: "",
-      grantors: [{ nombresCompletos: "", cedulaORuc: "", nacionalidad: "Ecuatoriana" }],
-      beneficiaries: [{ nombresCompletos: "", cedulaORuc: "", nacionalidad: "Ecuatoriana" }],
+      documentDate: "",
+      grantors: [],
+      beneficiaries: [],
       pdf: null,
     },
   });
@@ -75,18 +77,11 @@ function NewArchiveForm() {
   const pdf = watch("pdf");
   const typeValue = watch("type");
 
-  useEffect(() => {
-    setValue("code", generateCode(defaultType || undefined));
-  }, [generateCode, setValue, defaultType]);
-
-  const handleRegenCode = () => {
-    setValue("code", generateCode(typeValue as ArchiveType | undefined));
-  };
-
   const onSubmit = async (data: ArchiveFormData) => {
     const result = await createArchive({
       type: data.type,
       code: data.code,
+      documentDate: data.documentDate || undefined,
       observations: data.observations,
       grantors: data.grantors,
       beneficiaries: data.beneficiaries,
@@ -102,7 +97,7 @@ function NewArchiveForm() {
           title="Nuevo Archivo"
           description="Registra un nuevo archivo notarial en el sistema"
         >
-          <ButtonLink href="/archives" className="border-sidebar text-sidebar"  variant="default" size="sm">
+          <ButtonLink href="/archives" className="border-sidebar text-sidebar" variant="default" size="sm">
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             Volver
           </ButtonLink>
@@ -131,53 +126,54 @@ function NewArchiveForm() {
                   Información General
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 col-end-3 col">
-                {/* Tipo */}
-                <div className="space-y-1.5">
-                  <Label>Tipo de Documento</Label>
-                  <Select
-                    value={typeValue || ""}
-                    onValueChange={(v) => {
-                      setValue("type", v as ArchiveType);
-                      setValue("code", generateCode(v as ArchiveType));
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona el tipo de documento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ARCHIVE_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.type && (
-                    <p className="text-xs text-destructive">{errors.type.message}</p>
-                  )}
+              <CardContent className="space-y-4">
+                {/* Tipo + Fecha del documento */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Tipo de Documento</Label>
+                    <Select
+                      value={typeValue || ""}
+                      onValueChange={(v) => setValue("type", v as ArchiveType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ARCHIVE_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.type && (
+                      <p className="text-xs text-destructive">{errors.type.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="documentDate">Fecha del Escrito</Label>
+                    <Input
+                      id="documentDate"
+                      type="date"
+                      {...register("documentDate")}
+                    />
+                    {errors.documentDate && (
+                      <p className="text-xs text-destructive">{errors.documentDate.message}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Código */}
                 <div className="space-y-1.5">
                   <Label htmlFor="code">Código del Archivo</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="code"
-                      placeholder="20260801001P00000"
-                      className="font-mono"
-                      {...register("code")}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={handleRegenCode}
-                      title="Regenerar código"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <Input
+                    id="code"
+                    placeholder="Ingresa el código (máx. 17 caracteres)"
+                    className="font-mono"
+                    maxLength={17}
+                    {...register("code")}
+                  />
                   {errors.code && (
                     <p className="text-xs text-destructive">{errors.code.message}</p>
                   )}
@@ -200,28 +196,27 @@ function NewArchiveForm() {
               </CardContent>
             </Card>
 
-            {/* Otorgantes */}
+            {/* Otorgantes (opcional) */}
             <Card className="border-border bg-sidebar/50">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
                   Otorgantes
+                  <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <GrantorForm fieldName="grantors" title="Lista de Otorgantes" />
-                {errors.grantors?.root?.message && (
-                  <p className="text-xs text-destructive mt-2">{errors.grantors.root.message}</p>
-                )}
               </CardContent>
             </Card>
 
-            {/* A favor de */}
+            {/* A favor de (opcional) */}
             <Card className="border-border bg-sidebar/50">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-primary" />
                   A Favor De
+                  <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -230,9 +225,6 @@ function NewArchiveForm() {
                   title="Lista de Beneficiarios"
                   icon={<UserCheck className="w-4 h-4 text-muted-foreground" />}
                 />
-                {errors.beneficiaries?.root?.message && (
-                  <p className="text-xs text-destructive mt-2">{errors.beneficiaries.root.message}</p>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -251,6 +243,7 @@ function NewArchiveForm() {
                   value={(pdf as File) || null}
                   onChange={(file) => setValue("pdf", file)}
                   maxSizeMB={10}
+                  uploadProgress={pdfUploadProgress}
                 />
               </CardContent>
             </Card>
@@ -272,7 +265,7 @@ function NewArchiveForm() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Código</span>
-                  <span className="font-mono font-semibold text-primary text-xs">{watch("code")}</span>
+                  <span className="font-mono font-semibold text-primary text-xs">{watch("code") || "—"}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm">

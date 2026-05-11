@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,13 +13,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useAuthStore } from "@/store";
-import { toast } from "sonner";
+import { useAuth } from "@/hooks";
 
 const profileSchema = z.object({
-  firstName: z.string().min(2, "Nombre requerido"),
-  lastName: z.string().min(2, "Apellido requerido"),
-  email: z.string().email("Correo inválido"),
+  firstName: z.string().min(2, "Nombre requerido").max(100),
+  lastName: z.string().min(2, "Apellido requerido").max(100),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -31,23 +30,36 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function ProfilePage() {
-  const { user } = useAuthStore();
+  const { user, updateProfile } = useAuth();
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    reset,
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
     defaultValues: {
       firstName: user?.firstName || "",
       lastName: user?.lastName || "",
-      email: user?.email || "",
     },
   });
 
-  const onSubmit = async (_data: ProfileFormData) => {
-    await new Promise((r) => setTimeout(r, 500));
-    toast.success("Perfil actualizado correctamente");
+  // Sync form if the store user changes (e.g. after a successful update)
+  useEffect(() => {
+    if (user) {
+      reset({ firstName: user.firstName, lastName: user.lastName });
+    }
+  }, [user, reset]);
+
+  const onSubmit = async (data: ProfileFormData) => {
+    try {
+      await updateProfile({ firstName: data.firstName, lastName: data.lastName });
+      // reset dirty state so button disables again after save
+      reset({ firstName: data.firstName, lastName: data.lastName });
+    } catch {
+      // toast already shown by the hook
+    }
   };
 
   const initials = user
@@ -59,23 +71,23 @@ export default function ProfilePage() {
       <PageHeader title="Mi Perfil" description="Gestiona tu información personal" />
 
       <div className="max-w-2xl space-y-6">
-        {/* Avatar */}
+        {/* Avatar card */}
         <Card className="border-border bg-sidebar">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <Avatar className="w-16 h-16">
-                <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">
+                <AvatarFallback className="text-xl font-bold bg-white/10 text-white">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-base font-semibold text-foreground">
+                <p className="text-base font-semibold text-sidebar-foreground">
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                <p className="text-sm text-sidebar-foreground/60">{user?.email}</p>
                 {user?.roles?.[0] && (
-                  <Badge variant="outline" className="mt-1 text-xs">
-                    {ROLE_LABELS[user.roles[0]]}
+                  <Badge variant="outline" className="mt-1 text-xs border-white/20 text-sidebar-foreground/70">
+                    {ROLE_LABELS[user.roles[0]] ?? user.roles[0]}
                   </Badge>
                 )}
               </div>
@@ -83,30 +95,38 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Form */}
+        {/* Edit form */}
         <Card className="border-border bg-sidebar">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <User className="w-4 h-4 text-primary" />
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-sidebar-foreground">
+              <User className="w-4 h-4 text-sidebar-primary" />
               Información Personal
             </CardTitle>
-            <CardDescription>
-              Actualiza tu nombre y datos de contacto.
+            <CardDescription className="text-sidebar-foreground/60">
+              Actualiza tu nombre. El correo electrónico no puede modificarse desde aquí.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="firstName">Nombre</Label>
-                  <Input id="firstName" {...register("firstName")} />
+                  <Label htmlFor="firstName" className="text-sidebar-foreground">Nombre</Label>
+                  <Input
+                    id="firstName"
+                    placeholder="Tu nombre"
+                    {...register("firstName")}
+                  />
                   {errors.firstName && (
                     <p className="text-xs text-destructive">{errors.firstName.message}</p>
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="lastName">Apellido</Label>
-                  <Input id="lastName" {...register("lastName")} />
+                  <Label htmlFor="lastName" className="text-sidebar-foreground">Apellido</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Tu apellido"
+                    {...register("lastName")}
+                  />
                   {errors.lastName && (
                     <p className="text-xs text-destructive">{errors.lastName.message}</p>
                   )}
@@ -114,18 +134,31 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="email">Correo Electrónico</Label>
-                <Input id="email" type="email" {...register("email")} />
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email.message}</p>
-                )}
+                <Label className="text-sidebar-foreground">Correo Electrónico</Label>
+                <Input
+                  type="email"
+                  value={user?.email || ""}
+                  readOnly
+                  disabled
+                  className="opacity-60 cursor-not-allowed"
+                />
+                <p className="text-xs text-sidebar-foreground/50">
+                  El correo no puede cambiarse desde el perfil.
+                </p>
               </div>
 
-              <Separator />
+              <Separator className="bg-white/10" />
 
-              <Button type="submit" className="text-sidebar cursor-pointer" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="cursor-pointer text-sidebar"
+                disabled={isSubmitting || !isDirty}
+              >
                 {isSubmitting ? (
-                  "Guardando..."
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Guardando...
+                  </span>
                 ) : (
                   <span className="flex items-center gap-2">
                     <Save className="w-4 h-4" />

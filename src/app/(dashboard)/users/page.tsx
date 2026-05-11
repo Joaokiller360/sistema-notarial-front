@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Filter, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -70,21 +70,46 @@ export default function UsersPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    fetchUsers({ search: search || undefined, role: role || undefined, page, limit: 10 });
-  }, [fetchUsers, search, role, page]);
+    fetchUsers({ page: 1, limit: 50 });
+  }, [fetchUsers]);
 
-  useEffect(() => {
-    const timer = setTimeout(load, 300);
-    return () => clearTimeout(timer);
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
+
+  // Client-side filtering
+  const filteredUsers = useMemo(() => {
+    if (!users?.data) return [];
+    let data = users.data;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      data = data.filter(
+        (u) =>
+          u.firstName.toLowerCase().includes(q) ||
+          u.lastName.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q)
+      );
+    }
+    if (role) {
+      data = data.filter((u) => (u.roles ?? []).includes(role));
+    }
+    return data;
+  }, [users?.data, search, role]);
+
+  const PAGE_LIMIT = 10;
+  const totalPages = Math.ceil(filteredUsers.length / PAGE_LIMIT);
+  const pagedUsers = useMemo(() => {
+    const start = (page - 1) * PAGE_LIMIT;
+    return filteredUsers.slice(start, start + PAGE_LIMIT);
+  }, [filteredUsers, page]);
 
   const handleToggleActive = async (user: User) => {
     try {
-      await usersService.toggleActive(user.id);
-      toast.success(`Usuario ${user.isActive ? "desactivado" : "activado"}`);
+      await usersService.update(user.id, { isActive: !user.isActive });
+      toast.success(`Usuario ${user.isActive ? "desactivado" : "activado"} correctamente`);
       load();
-    } catch {
-      toast.error("Error al actualizar el estado");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+      const text = Array.isArray(msg) ? msg.join(" · ") : typeof msg === "string" ? msg : null;
+      toast.error(text || "Error al actualizar el estado del usuario");
     }
   };
 
@@ -224,18 +249,22 @@ export default function UsersPage() {
       <div className="space-y-3">
         <DataTable
           columns={columns}
-          data={users?.data || []}
+          data={pagedUsers}
           isLoading={isLoading}
           keyExtractor={(row) => row.id}
           emptyTitle="No hay usuarios"
-          emptyDescription="Agrega el primer usuario al sistema."
+          emptyDescription={
+            search || role
+              ? "No se encontraron usuarios con ese criterio."
+              : "Agrega el primer usuario al sistema."
+          }
         />
-        {users && users.totalPages > 1 && (
+        {totalPages > 1 && (
           <Pagination
-            page={users.page}
-            totalPages={users.totalPages}
-            total={users.total}
-            limit={users.limit}
+            page={page}
+            totalPages={totalPages}
+            total={filteredUsers.length}
+            limit={PAGE_LIMIT}
             onPageChange={setPage}
           />
         )}

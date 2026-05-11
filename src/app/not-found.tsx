@@ -3,7 +3,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-sidebar flex items-center justify-center p-6">
       <div className="text-center space-y-6 max-w-md">
         <div className="flex justify-center">
           <div className="w-20 h-20 rounded-2xl bg-muted/40 border border-border flex items-center justify-center">

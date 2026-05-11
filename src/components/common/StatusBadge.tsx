@@ -8,19 +8,19 @@ const STATUS_CONFIG: Record<
 > = {
   ACTIVO: {
     label: "Activo",
-    className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    className: "bg-[#1D2C49]/15 text-[#1D2C49] border-[#1D2C49]/25",
   },
   INACTIVO: {
     label: "Inactivo",
-    className: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    className: "bg-[#1D2C49]/5 text-[#1D2C49]/50 border-[#1D2C49]/10",
   },
   PENDIENTE: {
     label: "Pendiente",
-    className: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    className: "bg-[#1D2C49]/10 text-[#1D2C49] border-[#1D2C49]/20",
   },
   ARCHIVADO: {
     label: "Archivado",
-    className: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    className: "bg-[#1D2C49] text-white border-[#1D2C49]",
   },
 };
 

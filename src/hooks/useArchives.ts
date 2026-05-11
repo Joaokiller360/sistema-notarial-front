@@ -42,6 +42,7 @@ export function useArchives() {
   const [archive, setArchive] = useState<Archive | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pdfUploadProgress, setPdfUploadProgress] = useState(0);
 
   const fetchArchives = useCallback(async (filters: ArchiveFilters = {}) => {
     setIsLoading(true);
@@ -130,16 +131,25 @@ export function useArchives() {
 
   const createArchive = async (payload: ArchiveFormPayload) => {
     setIsSubmitting(true);
+    setPdfUploadProgress(0);
     try {
-      const { pdf, ...rest } = payload;
-      const created = await archivesService.create(rest);
+      const { pdf, grantors, beneficiaries, ...rest } = payload;
+      const created = await archivesService.create({
+        ...rest,
+        grantors: grantors ?? [],
+        beneficiaries: beneficiaries ?? [],
+      });
 
       if (pdf) {
         try {
-          await archivesService.uploadPdf(created.id, pdf);
-        } catch {
-          toast.warning("Archivo creado, pero el PDF no se pudo adjuntar.");
+          await archivesService.uploadPdf(created.id, pdf, setPdfUploadProgress);
+        } catch (uploadError: unknown) {
+          const raw = (uploadError as { response?: { data?: unknown } })?.response?.data;
+          const msg = extractErrorMessage(raw) || "El PDF no se pudo subir a S3.";
+          toast.warning(`Archivo creado, pero ${msg}`);
           return created;
+        } finally {
+          setPdfUploadProgress(0);
         }
       }
 
@@ -160,16 +170,25 @@ export function useArchives() {
     payload: UpdateArchiveFormPayload
   ) => {
     setIsSubmitting(true);
+    setPdfUploadProgress(0);
     try {
-      const { pdf, ...rest } = payload;
-      const updated = await archivesService.update(id, rest);
+      const { pdf, grantors, beneficiaries, ...rest } = payload;
+      const updated = await archivesService.update(id, {
+        ...rest,
+        grantors: grantors ?? [],
+        beneficiaries: beneficiaries ?? [],
+      });
 
       if (pdf) {
         try {
-          await archivesService.uploadPdf(id, pdf);
-        } catch {
-          toast.warning("Archivo actualizado, pero el PDF no se pudo subir.");
+          await archivesService.uploadPdf(id, pdf, setPdfUploadProgress);
+        } catch (uploadError: unknown) {
+          const raw = (uploadError as { response?: { data?: unknown } })?.response?.data;
+          const msg = extractErrorMessage(raw) || "El PDF no se pudo subir a S3.";
+          toast.warning(`Archivo actualizado, pero ${msg}`);
           return updated;
+        } finally {
+          setPdfUploadProgress(0);
         }
       }
 
@@ -188,12 +207,15 @@ export function useArchives() {
   const deleteArchive = async (id: string) => {
     try {
       await archivesService.delete(id);
-      toast.success("Archivo eliminado");
+      toast.success("Archivo eliminado exitosamente");
       setArchives((prev) =>
         prev ? { ...prev, data: prev.data.filter((a) => a.id !== id) } : prev
       );
-    } catch {
-      toast.error("Error al eliminar el archivo");
+    } catch (error: unknown) {
+      const raw = (error as { response?: { data?: unknown } })?.response?.data;
+      const msg = extractErrorMessage(raw) || "Error al eliminar el archivo";
+      toast.error(msg);
+      throw error;
     }
   };
 
@@ -204,6 +226,7 @@ export function useArchives() {
     archive,
     isLoading,
     isSubmitting,
+    pdfUploadProgress,
     fetchArchives,
     fetchAllArchives,
     fetchArchive,

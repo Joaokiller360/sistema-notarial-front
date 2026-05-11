@@ -21,6 +21,7 @@ export interface Archive {
   type: ArchiveType;
   status?: ArchiveStatus;
   observations?: string;
+  documentDate?: string;
   pdfUrl?: string;
   pdfFileName?: string;
   deletedAt?: string;
@@ -47,14 +48,16 @@ export interface CreateArchiveRequest {
   code: string;
   type: ArchiveType;
   observations?: string;
-  grantors: Omit<Grantor, "id">[];
-  beneficiaries: Omit<Beneficiary, "id">[];
+  documentDate?: string;
+  grantors?: Omit<Grantor, "id">[];
+  beneficiaries?: Omit<Beneficiary, "id">[];
 }
 
 export interface UpdateArchiveRequest {
   code?: string;
   type?: ArchiveType;
   observations?: string;
+  documentDate?: string;
   grantors?: Omit<Grantor, "id">[];
   beneficiaries?: Omit<Beneficiary, "id">[];
 }

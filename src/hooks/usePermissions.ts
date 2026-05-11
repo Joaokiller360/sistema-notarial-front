@@ -10,10 +10,10 @@ export function usePermissions() {
 
   const is = (roles: Role | Role[]): boolean => hasRole(roles);
 
-  const isSuperAdmin = () => user?.roles.includes("SUPER_ADMIN") ?? false;
-  const isNotario = () => user?.roles.includes("NOTARIO") ?? false;
-  const isMatrizador = () => user?.roles.includes("MATRIZADOR") ?? false;
-  const isArchivador = () => user?.roles.includes("ARCHIVADOR") ?? false;
+  const isSuperAdmin = () => (user?.roles ?? []).includes("SUPER_ADMIN");
+  const isNotario = () => (user?.roles ?? []).includes("NOTARIO");
+  const isMatrizador = () => (user?.roles ?? []).includes("MATRIZADOR");
+  const isArchivador = () => (user?.roles ?? []).includes("ARCHIVADOR");
 
   const canManageUsers = () => isSuperAdmin() || isNotario();
   const canCreateArchive = () =>
@@ -23,7 +23,7 @@ export function usePermissions() {
   const canDeleteArchive = () => isSuperAdmin() || isNotario();
   const canViewSystemSettings = () => isSuperAdmin();
 
-  const primaryRole = (): Role | undefined => user?.roles[0];
+  const primaryRole = (): Role | undefined => (user?.roles ?? [])[0];
 
   return {
     can,

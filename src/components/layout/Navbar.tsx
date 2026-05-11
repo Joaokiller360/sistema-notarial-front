@@ -25,10 +25,10 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  SUPER_ADMIN: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  NOTARIO: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  MATRIZADOR: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  ARCHIVADOR: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  SUPER_ADMIN: "bg-[#1D2C49] text-white border-[#1D2C49]",
+  NOTARIO: "bg-[#1D2C49]/20 text-[#1D2C49] border-[#1D2C49]/30",
+  MATRIZADOR: "bg-[#1D2C49]/12 text-[#1D2C49] border-[#1D2C49]/25",
+  ARCHIVADOR: "bg-[#1D2C49]/8 text-[#1D2C49] border-[#1D2C49]/15",
 };
 
 export function Navbar() {

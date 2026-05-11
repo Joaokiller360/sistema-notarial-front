@@ -41,15 +41,15 @@ export const useAuthStore = create<AuthState>()(
       hasPermission: (permissionName) => {
         const { user } = get();
         if (!user) return false;
-        if (user.roles.includes("SUPER_ADMIN")) return true;
-        return user.permissions.includes(permissionName);
+        if ((user.roles ?? []).includes("SUPER_ADMIN")) return true;
+        return (user.permissions ?? []).includes(permissionName);
       },
 
       hasRole: (roles) => {
         const { user } = get();
         if (!user) return false;
         const roleArray = Array.isArray(roles) ? roles : [roles];
-        return user.roles.some((r) => roleArray.includes(r));
+        return (user.roles ?? []).some((r) => roleArray.includes(r));
       },
     }),
     {

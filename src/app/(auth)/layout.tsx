@@ -8,18 +8,15 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800 flex-col items-center justify-center p-12 overflow-hidden">
-        <div className="absolute inset-0 bg-grid-white/[0.02]" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-
+      <div className="hidden lg:flex lg:w-1/2 relative bg-[#1D2C49] flex-col items-center justify-center p-12 overflow-hidden">
         <div className="relative z-10 text-center max-w-md">
-          <div className="flex items-center justify-center w-42 h-auto p-2.5 rounded-2xl bg-primary/10 border border-primary/20 mx-auto mb-6">
+          <div className="flex items-center justify-center w-42 h-auto p-2.5 rounded-2xl bg-white/10 border border-white/20 mx-auto mb-6">
             <img src="./logo-consejo-judicatura.png" alt="logo-consejo-judicatura" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-3">
             Sistema de Gestión Notarial
           </h1>
-          <p className="text-zinc-400 text-base leading-relaxed">
+          <p className="text-white/70 text-base leading-relaxed">
             Plataforma profesional para la gestión integral de archivos y
             documentos notariales.
           </p>

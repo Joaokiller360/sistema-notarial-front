@@ -17,9 +17,9 @@ export function Providers({ children }: ProvidersProps) {
         closeButton
         toastOptions={{
           classNames: {
-            toast: "bg-zinc-900 border border-zinc-700 text-zinc-100",
-            title: "text-zinc-100",
-            description: "text-zinc-400",
+            toast: "bg-[#1D2C49] border border-white/10 text-white",
+            title: "text-white",
+            description: "text-white/70",
           },
         }}
       />

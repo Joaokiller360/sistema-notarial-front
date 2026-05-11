@@ -58,15 +58,37 @@ export const archivesService = {
     return data.data;
   },
 
-  uploadPdf: async (id: string, file: File): Promise<Archive> => {
+  uploadPdf: async (
+    id: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<Archive> => {
     const formData = new FormData();
     formData.append("file", file);
+    // Do NOT set Content-Type manually — axios sets multipart/form-data with the
+    // correct boundary automatically when the body is a FormData instance.
     const { data } = await apiFormClient.post<BackendApiResponse<Archive>>(
       `/archives/${id}/upload-pdf`,
       formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      {
+        onUploadProgress: (event) => {
+          if (event.total && onProgress) {
+            onProgress(Math.round((event.loaded / event.total) * 100));
+          }
+        },
+      }
     );
     return data.data;
+  },
+
+  getPdfUrl: async (key: string): Promise<string> => {
+    const response = await apiClient.get("/files/view-url", { params: { key } });
+    const body = response.data;
+    // { success, data: { viewUrl, expiresIn } }
+    const url: string =
+      body?.data?.viewUrl ?? body?.viewUrl ?? body?.data?.url ?? body?.url;
+    if (typeof url !== "string" || !url) throw new Error("URL no disponible");
+    return url;
   },
 
   delete: async (id: string): Promise<void> => {

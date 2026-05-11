@@ -4,13 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store";
-import { authService } from "@/services";
+import { authService, usersService } from "@/services";
 import { tokenUtils } from "@/utils/token";
 import type { LoginRequest } from "@/types";
 
 export function useAuth() {
   const [isLoading, setIsLoading] = useState(false);
-  const { setAuth, clearAuth, user, isAuthenticated } = useAuthStore();
+  const { setAuth, clearAuth, setUser, user, isAuthenticated } = useAuthStore();
   const router = useRouter();
 
   const login = async (credentials: LoginRequest) => {
@@ -46,13 +46,42 @@ export function useAuth() {
     }
   };
 
+  const updateProfile = async (payload: {
+    firstName: string;
+    lastName: string;
+  }) => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const updated = await usersService.update(user.id, payload);
+      // Merge: the PATCH response may omit roles/permissions — keep the existing ones
+      setUser({
+        ...user,
+        ...updated,
+        roles: updated.roles ?? user.roles,
+        permissions: updated.permissions ?? user.permissions,
+      });
+      toast.success("Perfil actualizado correctamente");
+      return updated;
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || "Error al actualizar el perfil";
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const changePassword = async (payload: {
     currentPassword: string;
     newPassword: string;
   }) => {
+    if (!user) return;
     setIsLoading(true);
     try {
-      await authService.changePassword(payload);
+      await usersService.updatePassword(user.id, payload);
       toast.success("Contraseña actualizada correctamente");
     } catch (error: unknown) {
       const message =
@@ -71,6 +100,7 @@ export function useAuth() {
     isLoading,
     login,
     logout,
+    updateProfile,
     changePassword,
   };
 }

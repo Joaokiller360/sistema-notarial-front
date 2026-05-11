@@ -16,14 +16,16 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useAuthStore } from "@/store";
 import { useAuth } from "@/hooks";
-import { toast } from "sonner";
 
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, "Contraseña actual requerida"),
-    newPassword: z.string().min(8, "Mínimo 8 caracteres"),
+    newPassword: z
+      .string()
+      .min(8, "Mínimo 8 caracteres")
+      .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
+      .regex(/[0-9]/, "Debe contener al menos un número"),
     confirmPassword: z.string(),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
@@ -34,10 +36,10 @@ const passwordSchema = z
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
 export default function SecurityPage() {
-  const { user } = useAuthStore();
   const { changePassword } = useAuth();
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const {
     register,
@@ -49,7 +51,6 @@ export default function SecurityPage() {
   });
 
   const onSubmit = async (data: PasswordFormData) => {
-    if (!user) return;
     try {
       await changePassword({
         currentPassword: data.currentPassword,
@@ -57,7 +58,7 @@ export default function SecurityPage() {
       });
       reset();
     } catch {
-      // el hook ya maneja el toast de error
+      // toast already shown by the hook
     }
   };
 
@@ -71,18 +72,21 @@ export default function SecurityPage() {
       <div className="max-w-2xl">
         <Card className="border-border bg-sidebar">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Shield className="w-4 h-4 text-primary" />
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-sidebar-foreground">
+              <Shield className="w-4 h-4 text-sidebar-primary" />
               Cambiar Contraseña
             </CardTitle>
-            <CardDescription>
-              Usa una contraseña segura de al menos 8 caracteres.
+            <CardDescription className="text-sidebar-foreground/60">
+              Usa una contraseña de al menos 8 caracteres, con mayúsculas y números.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* Current password */}
               <div className="space-y-1.5">
-                <Label htmlFor="currentPassword">Contraseña Actual</Label>
+                <Label htmlFor="currentPassword" className="text-sidebar-foreground">
+                  Contraseña Actual
+                </Label>
                 <div className="relative">
                   <Input
                     id="currentPassword"
@@ -94,7 +98,7 @@ export default function SecurityPage() {
                   <button
                     type="button"
                     onClick={() => setShowCurrent((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                   >
                     {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -104,8 +108,11 @@ export default function SecurityPage() {
                 )}
               </div>
 
+              {/* New password */}
               <div className="space-y-1.5">
-                <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                <Label htmlFor="newPassword" className="text-sidebar-foreground">
+                  Nueva Contraseña
+                </Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
@@ -117,7 +124,7 @@ export default function SecurityPage() {
                   <button
                     type="button"
                     onClick={() => setShowNew((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                   >
                     {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -127,22 +134,42 @@ export default function SecurityPage() {
                 )}
               </div>
 
+              {/* Confirm password */}
               <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  {...register("confirmPassword")}
-                />
+                <Label htmlFor="confirmPassword" className="text-sidebar-foreground">
+                  Confirmar Nueva Contraseña
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirm ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="pr-10"
+                    {...register("confirmPassword")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {errors.confirmPassword && (
                   <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
                 )}
               </div>
 
-              <Button type="submit" className="text-sidebar cursor-pointer" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="cursor-pointer text-sidebar"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? (
-                  "Actualizando..."
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Actualizando...
+                  </span>
                 ) : (
                   <span className="flex items-center gap-2">
                     <Save className="w-4 h-4" />

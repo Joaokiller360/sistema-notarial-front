@@ -43,10 +43,11 @@ const personSchema = z.object({
 
 const archiveSchema = z.object({
   type: z.enum(["A", "C", "D", "O", "P"]),
-  code: z.string().min(3).max(20),
+  code: z.string().min(1, "El código es requerido").max(17, "Máximo 17 caracteres"),
+  documentDate: z.string().optional(),
   observations: z.string().max(2000).optional(),
-  grantors: z.array(personSchema).min(1, "Agrega al menos un otorgante"),
-  beneficiaries: z.array(personSchema).min(1, "Agrega al menos un beneficiario"),
+  grantors: z.array(personSchema),
+  beneficiaries: z.array(personSchema),
   pdf: z.custom<File | null>().optional(),
 });
 
@@ -55,11 +56,11 @@ type ArchiveFormData = z.infer<typeof archiveSchema>;
 export default function EditArchivePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { archive, isLoading, fetchArchive, updateArchive, isSubmitting } = useArchives();
+  const { archive, isLoading, fetchArchive, updateArchive, isSubmitting, pdfUploadProgress } = useArchives();
 
   const methods = useForm<ArchiveFormData>({
     resolver: zodResolver(archiveSchema),
-    defaultValues: { type: "A", code: "", grantors: [], beneficiaries: [], pdf: null },
+    defaultValues: { type: "A", code: "", documentDate: "", grantors: [], beneficiaries: [], pdf: null },
   });
 
   const { register, handleSubmit, setValue, watch, reset } = methods;
@@ -73,6 +74,9 @@ export default function EditArchivePage() {
       reset({
         type: archive.type || "A",
         code: archive.code,
+        documentDate: archive.documentDate
+          ? new Date(archive.documentDate).toISOString().split("T")[0]
+          : "",
         observations: archive.observations || "",
         grantors: archive.grantors.map((g) => ({
           nombresCompletos: g.nombresCompletos,
@@ -95,6 +99,7 @@ export default function EditArchivePage() {
     const result = await updateArchive(id, {
       type: data.type,
       code: data.code,
+      documentDate: data.documentDate || undefined,
       observations: data.observations,
       grantors: data.grantors,
       beneficiaries: data.beneficiaries,
@@ -148,30 +153,42 @@ export default function EditArchivePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Tipo de Documento</Label>
-                  <Select
-                    value={watch("type") || ""}
-                    onValueChange={(v) => setValue("type", v as ArchiveType)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona el tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ARCHIVE_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Tipo de Documento</Label>
+                    <Select
+                      value={watch("type") || ""}
+                      onValueChange={(v) => setValue("type", v as ArchiveType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ARCHIVE_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="documentDate">Fecha del Escrito</Label>
+                    <Input
+                      id="documentDate"
+                      type="date"
+                      {...register("documentDate")}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="code">Código del Archivo</Label>
                   <Input
                     id="code"
                     className="font-mono"
-                    readOnly
+                    maxLength={17}
+                    placeholder="Ingresa el código (máx. 17 caracteres)"
                     {...register("code")}
                   />
                 </div>
@@ -192,6 +209,7 @@ export default function EditArchivePage() {
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
                   Otorgantes
+                  <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -204,6 +222,7 @@ export default function EditArchivePage() {
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-primary" />
                   A Favor De
+                  <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -236,6 +255,7 @@ export default function EditArchivePage() {
                   value={(pdf as File) || null}
                   onChange={(file) => setValue("pdf", file)}
                   maxSizeMB={10}
+                  uploadProgress={pdfUploadProgress}
                 />
               </CardContent>
             </Card>

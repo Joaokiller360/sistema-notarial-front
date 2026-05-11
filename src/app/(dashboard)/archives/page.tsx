@@ -86,17 +86,16 @@ export default function ArchivesPage() {
   // clientPage: used when a type tab is active — frontend paginates
   const [clientPage, setClientPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(() => {
-    if (activeType) {
-      // Backend forbids `type` as query param — fetch all pages and filter client-side.
-      fetchAllArchives({
-        search: search || undefined,
-        status: status || undefined,
-      });
+    if (activeType || search) {
+      // Fetch all pages and filter client-side when a type tab is active or a search
+      // term is present — backend doesn't support type as query param and doesn't
+      // search nested grantor/beneficiary fields.
+      fetchAllArchives({ status: status || undefined });
     } else {
       fetchArchives({
-        search: search || undefined,
         status: status || undefined,
         page: serverPage,
         limit: PAGE_LIMIT,
@@ -124,18 +123,41 @@ export default function ArchivesPage() {
   // Client-side filtering and pagination
   const filteredData = useMemo(() => {
     if (!archives?.data) return [];
-    if (!activeType) return archives.data;
-    return archives.data.filter((a) => a.type === activeType);
-  }, [archives?.data, activeType]);
+    let data = archives.data;
+
+    if (activeType) {
+      data = data.filter((a) => a.type === activeType);
+    }
+
+    if (search) {
+      const q = search.toLowerCase();
+      data = data.filter(
+        (a) =>
+          a.code.toLowerCase().includes(q) ||
+          a.grantors.some(
+            (g) =>
+              g.nombresCompletos.toLowerCase().includes(q) ||
+              g.cedulaORuc.toLowerCase().includes(q)
+          ) ||
+          a.beneficiaries.some(
+            (b) =>
+              b.nombresCompletos.toLowerCase().includes(q) ||
+              b.cedulaORuc.toLowerCase().includes(q)
+          )
+      );
+    }
+
+    return data;
+  }, [archives?.data, activeType, search]);
 
   const displayData = useMemo(() => {
-    if (!activeType) return filteredData;
+    if (!activeType && !search) return filteredData;
     const start = (clientPage - 1) * PAGE_LIMIT;
     return filteredData.slice(start, start + PAGE_LIMIT);
-  }, [activeType, filteredData, clientPage]);
+  }, [activeType, search, filteredData, clientPage]);
 
   const paginationInfo = useMemo(() => {
-    if (!activeType) {
+    if (!activeType && !search) {
       if (!archives || archives.totalPages <= 1) return null;
       return {
         page: archives.page,
@@ -155,13 +177,20 @@ export default function ArchivesPage() {
       limit: PAGE_LIMIT,
       onPageChange: setClientPage,
     };
-  }, [activeType, archives, filteredData, clientPage]);
+  }, [activeType, search, archives, filteredData, clientPage]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await deleteArchive(deleteId);
-    setDeleteId(null);
-    load();
+    setIsDeleting(true);
+    try {
+      await deleteArchive(deleteId);
+      setDeleteId(null);
+      load();
+    } catch {
+      // error already shown by hook — keep dialog open so user sees it failed
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const newHref = activeType ? `/archives/new?type=${activeType}` : "/archives/new";
@@ -362,21 +391,29 @@ export default function ArchivesPage() {
         )}
       </div>
 
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!isDeleting) setDeleteId(open ? deleteId : null); }}>
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sidebar">¿Eliminar archivo?</AlertDialogTitle>
             <AlertDialogDescription className="text-sidebar">
-              Esta acción no se puede deshacer. <br />El archivo será eliminado permanentemente.
+              Esta acción no se puede deshacer. <br />El archivo será eliminado permanentemente del sistema.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="bg-sidebar/50">
-            <AlertDialogCancel className="border-2 border-sidebar cursor-pointer">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting} className="border-2 border-sidebar cursor-pointer">
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={isDeleting}
               className="bg-destructive cursor-pointer text-destructive-foreground hover:bg-destructive/90"
             >
-              Eliminar
+              {isDeleting ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Eliminando...
+                </span>
+              ) : "Eliminar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
