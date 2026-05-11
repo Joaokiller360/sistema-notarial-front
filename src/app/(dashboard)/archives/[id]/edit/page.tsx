@@ -24,7 +24,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { FileUpload } from "@/components/common/FileUpload";
 import { GrantorForm } from "@/components/common/GrantorForm";
 import { PageLoader } from "@/components/common/LoadingSpinner";
-import { useArchives } from "@/hooks";
+import { useArchives, useSystemSettings } from "@/hooks";
 import type { ArchiveType } from "@/types";
 
 const ARCHIVE_TYPES: { value: ArchiveType; label: string }[] = [
@@ -57,6 +57,9 @@ export default function EditArchivePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { archive, isLoading, fetchArchive, updateArchive, isSubmitting, pdfUploadProgress } = useArchives();
+  const { config, fetchConfig } = useSystemSettings();
+
+  useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
   const methods = useForm<ArchiveFormData>({
     resolver: zodResolver(archiveSchema),
@@ -260,7 +263,7 @@ export default function EditArchivePage() {
                 <FileUpload
                   value={(pdf as File) || null}
                   onChange={(file) => setValue("pdf", file)}
-                  maxSizeMB={10}
+                  maxSizeMB={config?.maxPdfSizeMb ?? 10}
                   uploadProgress={pdfUploadProgress}
                 />
               </CardContent>

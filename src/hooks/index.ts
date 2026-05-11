@@ -3,3 +3,4 @@ export { usePermissions } from "./usePermissions";
 export { useArchives } from "./useArchives";
 export { useUsers } from "./useUsers";
 export { useTokenRefresh } from "./useTokenRefresh";
+export { useSystemSettings } from "./useSystemSettings";

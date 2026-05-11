@@ -11,7 +11,7 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: "Sistema de Gestión Notarial",
   description: "Plataforma profesional de gestión de archivos notariales",
-  icons: "/icon.jpeg",
+  icons: "/favicon.ico",
 };
 
 export default function RootLayout({

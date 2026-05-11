@@ -17,9 +17,9 @@ export function usePermissions() {
 
   const canManageUsers = () => isSuperAdmin() || isNotario();
   const canCreateArchive = () =>
-    isSuperAdmin() || isNotario() || isMatrizador() || can("archives:create");
+    isSuperAdmin() || isNotario() || isArchivador() || can("archives:create");
   const canEditArchive = () =>
-    isSuperAdmin() || isNotario() || isMatrizador();
+    isSuperAdmin() || isNotario() || isArchivador();
   const canDeleteArchive = () => isSuperAdmin() || isNotario();
   const canViewSystemSettings = () => isSuperAdmin();
 

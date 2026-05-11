@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,7 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/common/PageHeader";
 import { FileUpload } from "@/components/common/FileUpload";
 import { GrantorForm } from "@/components/common/GrantorForm";
-import { useArchives } from "@/hooks";
+import { useArchives, useSystemSettings } from "@/hooks";
 import type { ArchiveType } from "@/types";
 
 const ARCHIVE_TYPES: { value: ArchiveType; label: string }[] = [
@@ -60,6 +60,8 @@ function NewArchiveForm() {
   const defaultType = searchParams.get("type") as ArchiveType | null;
 
   const { createArchive, isSubmitting, pdfUploadProgress } = useArchives();
+  const { config, fetchConfig } = useSystemSettings();
+  useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
   const methods = useForm<ArchiveFormData>({
     resolver: zodResolver(archiveSchema),
@@ -248,7 +250,7 @@ function NewArchiveForm() {
                 <FileUpload
                   value={(pdf as File) || null}
                   onChange={(file) => setValue("pdf", file)}
-                  maxSizeMB={10}
+                  maxSizeMB={config?.maxPdfSizeMb ?? 10}
                   uploadProgress={pdfUploadProgress}
                 />
               </CardContent>

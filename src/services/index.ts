@@ -4,4 +4,6 @@ export { usersService } from "./users.service";
 export { rolesService } from "./roles.service";
 export { logsService } from "./logs.service";
 export { clientsService } from "./clients.service";
+export { systemService } from "./system.service";
 export type { RoleItem } from "./roles.service";
+export type { SystemConfig } from "./system.service";
