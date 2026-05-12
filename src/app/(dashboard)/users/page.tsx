@@ -58,19 +58,24 @@ const ROLE_LABELS: Record<string, string> = {
 export default function UsersPage() {
   const router = useRouter();
   const { users, isLoading, fetchUsers, deleteUser } = useUsers();
-  const { isSuperAdmin, isNotario, canManageUsers } = usePermissions();
+  const { isSuperAdmin, isNotario, canManageUsers, user: currentUser } = usePermissions();
 
   // El NOTARIO no puede editar cuentas SUPER_ADMIN
   const canActOn = (target: User) =>
     isSuperAdmin() || !(target.roles ?? []).includes("SUPER_ADMIN");
 
-  // La cuenta SUPER_ADMIN NUNCA puede ser desactivada (independiente de quién intenta)
-  const isSuperAdminTarget = (target: User) =>
-    (target.roles ?? []).includes("SUPER_ADMIN");
-
   // Ocultar el botón Eliminar cuando el target es una cuenta SUPER_ADMIN
   const canDeleteUser = (target: User) =>
     !(target.roles ?? []).includes("SUPER_ADMIN");
+
+  // Solo super_admin puede activar/desactivar. Retorna el estado del botón toggle para el target.
+  type ToggleState = "allowed" | "self" | "super_admin_target" | "no_permission";
+  const toggleState = (target: User): ToggleState => {
+    if (!isSuperAdmin()) return "no_permission";
+    if (target.id === currentUser?.id) return "self";
+    if ((target.roles ?? []).includes("SUPER_ADMIN")) return "super_admin_target";
+    return "allowed";
+  };
 
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<Role | "">("");
@@ -110,7 +115,14 @@ export default function UsersPage() {
   }, [filteredUsers, page]);
 
   const handleToggleActive = async (user: User) => {
-    // Guard: super_admin account cannot be deactivated from any path
+    if (!isSuperAdmin()) {
+      toast.error("No tienes permiso para realizar esta acción");
+      return;
+    }
+    if (user.id === currentUser?.id) {
+      toast.error("No puedes desactivar tu propia cuenta");
+      return;
+    }
     if ((user.roles ?? []).includes("SUPER_ADMIN")) {
       toast.error("La cuenta Super Admin no puede ser desactivada");
       return;
@@ -199,31 +211,34 @@ export default function UsersPage() {
       label: "Acciones",
       className: "text-right",
       render: (row) => {
-        const superAdminLocked = isSuperAdminTarget(row);
+        const tState = toggleState(row);
+        const toggleTooltip =
+          tState === "self" ? "No puedes desactivar tu propia cuenta"
+          : tState === "super_admin_target" ? "La cuenta Super Admin no puede ser desactivada"
+          : undefined;
         return (
           <div className="flex items-center justify-end gap-1">
-            {/* Toggle Desactivar/Activar: siempre visible, deshabilitado para SUPER_ADMIN */}
-            <span
-              title={superAdminLocked ? "La cuenta Super Admin no puede ser desactivada" : undefined}
-              className="inline-flex"
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => !superAdminLocked && handleToggleActive(row)}
-                disabled={superAdminLocked}
-                aria-label={superAdminLocked ? "No se puede desactivar Super Admin" : row.isActive ? "Desactivar" : "Activar"}
-              >
-                {superAdminLocked ? (
-                  <Ban className="w-4 h-4 text-muted-foreground" />
-                ) : row.isActive ? (
-                  <ToggleRight className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <ToggleLeft className="w-4 h-4" />
-                )}
-              </Button>
-            </span>
+            {/* Toggle Desactivar/Activar: solo visible para super_admin, deshabilitado para targets restringidos */}
+            {tState !== "no_permission" && (
+              <span title={toggleTooltip} className="inline-flex">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => tState === "allowed" && handleToggleActive(row)}
+                  disabled={tState !== "allowed"}
+                  aria-label={toggleTooltip ?? (row.isActive ? "Desactivar" : "Activar")}
+                >
+                  {tState !== "allowed" ? (
+                    <Ban className="w-4 h-4 text-muted-foreground" />
+                  ) : row.isActive ? (
+                    <ToggleRight className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <ToggleLeft className="w-4 h-4" />
+                  )}
+                </Button>
+              </span>
+            )}
 
             {/* Editar: solo cuando canActOn */}
             {canActOn(row) && (
