@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,6 +28,14 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { PageLoader } from "@/components/common/LoadingSpinner";
 import { CharCounter } from "@/components/common/CharCounter";
 import { useUsers, usePermissions } from "@/hooks";
+import { rolesService, type RoleItem } from "@/services";
+
+const ROLE_TYPE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Super Administrador",
+  NOTARIO: "Notario",
+  MATRIZADOR: "Matrizador",
+  ARCHIVADOR: "Archivador",
+};
 
 const NOMBRE_MAX = 250;
 
@@ -41,6 +49,7 @@ const userSchema = z.object({
     .min(2, "Apellido requerido")
     .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
   email: z.string().email("Correo electrónico inválido"),
+  roleId: z.string().optional(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -50,21 +59,23 @@ export default function EditUserPage() {
   const router = useRouter();
   const { user: targetUser, isLoading, fetchUser, updateUser, isSubmitting } = useUsers();
   const { isSuperAdmin, user: me } = usePermissions();
+  const [roles, setRoles] = useState<RoleItem[]>([]);
 
   const isSelf = id === me?.id;
   const isTargetSuperAdmin = targetUser?.roles?.includes("SUPER_ADMIN") ?? false;
-  // Show disabled status indicator only when super_admin edits their own profile
   const showDisabledStatus = isSuperAdmin() && isSelf;
+  const showRoleSelector = isSuperAdmin() && !isSelf && !isTargetSuperAdmin;
 
   const {
     register,
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors, isSubmitted, isValid },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: { firstName: "", lastName: "", email: "" },
+    defaultValues: { firstName: "", lastName: "", email: "", roleId: "" },
   });
 
   const firstNameValue = watch("firstName") || "";
@@ -75,20 +86,28 @@ export default function EditUserPage() {
   }, [id, fetchUser]);
 
   useEffect(() => {
+    rolesService.getAll().then(setRoles).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (targetUser) {
+      const currentRoleType = targetUser.roles?.[0];
+      const matchedRole = roles.find((r) => r.type === currentRoleType);
       reset({
         firstName: targetUser.firstName,
         lastName: targetUser.lastName,
         email: targetUser.email,
+        roleId: matchedRole?.id ?? "",
       });
     }
-  }, [targetUser, reset]);
+  }, [targetUser, roles, reset]);
 
   const onSubmit = async (data: UserFormData) => {
     await updateUser(id, {
       email: data.email,
       firstName: data.firstName,
       lastName: data.lastName,
+      ...(showRoleSelector && data.roleId ? { roleIds: [data.roleId] } : {}),
     });
     router.push("/users");
   };
@@ -185,6 +204,27 @@ export default function EditUserPage() {
                 <p className="text-xs text-destructive">{errors.email.message}</p>
               )}
             </div>
+
+            {showRoleSelector && (
+              <div className="space-y-1.5">
+                <Label>Rol</Label>
+                <Select
+                  value={watch("roleId") ?? ""}
+                  onValueChange={(v) => setValue("roleId", v ?? undefined)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un rol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {ROLE_TYPE_LABELS[role.type] ?? role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {showDisabledStatus && (
               <div className="space-y-1.5">
