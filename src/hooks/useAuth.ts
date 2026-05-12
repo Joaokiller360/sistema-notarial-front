@@ -81,8 +81,12 @@ export function useAuth() {
     if (!user) return;
     setIsLoading(true);
     try {
-      await usersService.updatePassword(user.id, payload);
-      toast.success("Contraseña actualizada correctamente");
+      await authService.changePassword(payload);
+      toast.success("Contraseña actualizada. Por seguridad debes iniciar sesión nuevamente.");
+      clearAuth();
+      document.cookie =
+        "notaria_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+      router.push("/login");
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response
