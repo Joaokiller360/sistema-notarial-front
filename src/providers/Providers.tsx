@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/zod-locale";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 

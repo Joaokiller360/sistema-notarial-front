@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
+import { CharCounter } from "@/components/common/CharCounter";
 import { useUsers } from "@/hooks";
 import { rolesService, type RoleItem } from "@/services";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,8 @@ const ROLE_TYPE_LABELS: Record<string, string> = {
   ARCHIVADOR: "Archivador",
 };
 
+const NOMBRE_MAX = 250;
+
 const passwordRules = [
   { id: "length",  label: "Mínimo 8 caracteres",          test: (v: string) => v.length >= 8 },
   { id: "upper",   label: "Al menos 1 letra mayúscula",   test: (v: string) => /[A-Z]/.test(v) },
@@ -39,8 +42,14 @@ const passwordRules = [
 
 const userSchema = z
   .object({
-    firstName: z.string().min(2, "Nombre requerido"),
-    lastName: z.string().min(2, "Apellido requerido"),
+    firstName: z
+      .string()
+      .min(2, "Nombre requerido")
+      .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
+    lastName: z
+      .string()
+      .min(2, "Apellido requerido")
+      .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
     email: z.string().email("Correo electrónico inválido"),
     roleId: z.string().min(1, "Selecciona un rol"),
     password: z
@@ -74,13 +83,15 @@ export default function NewUserPage() {
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitted, isValid },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: { roleId: "" },
+    defaultValues: { roleId: "", firstName: "", lastName: "" },
   });
 
   const passwordValue = watch("password") || "";
+  const firstNameValue = watch("firstName") || "";
+  const lastNameValue = watch("lastName") || "";
 
   const onSubmit = async (data: UserFormData) => {
     await createUser({
@@ -100,7 +111,11 @@ export default function NewUserPage() {
           <ArrowLeft className="w-4 h-4 mr-1.5" />
           Volver
         </ButtonLink>
-        <Button className="cursor-pointer" type="submit" disabled={isSubmitting}>
+        <Button
+          className="cursor-pointer"
+          type="submit"
+          disabled={isSubmitting || (isSubmitted && !isValid)}
+        >
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -116,7 +131,6 @@ export default function NewUserPage() {
       </PageHeader>
 
       <div className="max-w-2xl space-y-6">
-        {/* Datos personales */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -127,15 +141,31 @@ export default function NewUserPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="firstName">Nombre</Label>
-                <Input id="firstName" placeholder="Juan" {...register("firstName")} />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="firstName">Nombre</Label>
+                  <CharCounter current={firstNameValue.length} max={NOMBRE_MAX} warnAt={20} />
+                </div>
+                <Input
+                  id="firstName"
+                  placeholder="Juan"
+                  maxLength={NOMBRE_MAX}
+                  {...register("firstName")}
+                />
                 {errors.firstName && (
                   <p className="text-xs text-destructive">{errors.firstName.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lastName">Apellido</Label>
-                <Input id="lastName" placeholder="Pérez" {...register("lastName")} />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <CharCounter current={lastNameValue.length} max={NOMBRE_MAX} warnAt={20} />
+                </div>
+                <Input
+                  id="lastName"
+                  placeholder="Pérez"
+                  maxLength={NOMBRE_MAX}
+                  {...register("lastName")}
+                />
                 {errors.lastName && (
                   <p className="text-xs text-destructive">{errors.lastName.message}</p>
                 )}
@@ -179,7 +209,6 @@ export default function NewUserPage() {
           </CardContent>
         </Card>
 
-        {/* Contraseña */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-4">
             <CardTitle className="text-sm font-semibold">Contraseña de Acceso</CardTitle>
@@ -204,9 +233,8 @@ export default function NewUserPage() {
                 </button>
               </div>
 
-              {/* Indicadores de requisitos */}
-              <div className="mt-2 space-y-1.5 p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
+              <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
                   La contraseña debe cumplir:
                 </p>
                 {passwordRules.map((rule) => {

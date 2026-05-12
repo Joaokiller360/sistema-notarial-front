@@ -147,7 +147,7 @@ export default function ArchiveDetailPage() {
                   <Separator />
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Observaciones</p>
-                    <p className="text-sm">{archive.observations}</p>
+                    <p className="text-sm break-words">{archive.observations}</p>
                   </div>
                 </>
               )}
@@ -168,15 +168,15 @@ export default function ArchiveDetailPage() {
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <p className="text-xs text-muted-foreground">Nombre</p>
-                        <p className="text-sm font-medium">{g.nombresCompletos}</p>
+                        <p className="text-sm font-medium break-words">{g.nombresCompletos}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Cédula/RUC</p>
-                        <p className="text-sm font-mono">{g.cedulaORuc}</p>
+                        <p className="text-sm font-mono break-all">{g.cedulaORuc}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Nacionalidad</p>
-                        <p className="text-sm">{g.nacionalidad}</p>
+                        <p className="text-sm break-words">{g.nacionalidad}</p>
                       </div>
                     </div>
                   </div>
@@ -199,15 +199,15 @@ export default function ArchiveDetailPage() {
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <p className="text-xs text-muted-foreground">Nombre</p>
-                        <p className="text-sm font-medium">{b.nombresCompletos}</p>
+                        <p className="text-sm font-medium break-words">{b.nombresCompletos}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Cédula/RUC</p>
-                        <p className="text-sm font-mono">{b.cedulaORuc}</p>
+                        <p className="text-sm font-mono break-all">{b.cedulaORuc}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Nacionalidad</p>
-                        <p className="text-sm">{b.nacionalidad}</p>
+                        <p className="text-sm break-words">{b.nacionalidad}</p>
                       </div>
                     </div>
                   </div>

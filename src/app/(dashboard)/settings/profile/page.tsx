@@ -70,21 +70,21 @@ export default function ProfilePage() {
 
       <div className="max-w-2xl space-y-6">
         {/* Avatar card */}
-        <Card className="border-border bg-sidebar">
-          <CardContent className="pt-6">
+        <Card className="border-border bg-background">
+          <CardContent className="py-2">
             <div className="flex items-center gap-4">
               <Avatar className="w-16 h-16">
-                <AvatarFallback className="text-xl font-bold bg-white/10 text-white">
+                <AvatarFallback className="text-xl font-bold bg-white border-foreground border-4 text-foreground">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-base font-semibold text-sidebar-foreground">
+                <p className="text-base font-semibold text-foreground">
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className="text-sm text-sidebar-foreground/60">{user?.email}</p>
+                <p className="text-sm text-foreground/60">{user?.email}</p>
                 {user?.roles?.[0] && (
-                  <Badge variant="outline" className="mt-1 text-xs border-white/20 text-sidebar-foreground/70">
+                  <Badge variant="outline" className="mt-1 text-xs border-foreground/20 text-foreground/70">
                     {ROLE_LABELS[user.roles[0]] ?? user.roles[0]}
                   </Badge>
                 )}
@@ -94,13 +94,13 @@ export default function ProfilePage() {
         </Card>
 
         {/* Edit form */}
-        <Card className="border-border bg-sidebar">
+        <Card className="border-border bg-background">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-sidebar-foreground">
-              <User className="w-4 h-4 text-sidebar-primary" />
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <User className="w-4 h-4 text-foreground" />
               Información Personal
             </CardTitle>
-            <CardDescription className="text-sidebar-foreground/60">
+            <CardDescription className="text-foreground/60">
               Actualiza tu nombre. El correo electrónico no puede modificarse desde aquí.
             </CardDescription>
           </CardHeader>
@@ -108,7 +108,7 @@ export default function ProfilePage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="firstName" className="text-sidebar-foreground">Nombre</Label>
+                  <Label htmlFor="firstName" className="text-foreground">Nombre</Label>
                   <Input
                     id="firstName"
                     placeholder="Tu nombre"
@@ -119,7 +119,7 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="lastName" className="text-sidebar-foreground">Apellido</Label>
+                  <Label htmlFor="lastName" className="text-foreground">Apellido</Label>
                   <Input
                     id="lastName"
                     placeholder="Tu apellido"
@@ -132,7 +132,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-sidebar-foreground">Correo Electrónico</Label>
+                <Label className="text-foreground">Correo Electrónico</Label>
                 <Input
                   type="email"
                   value={user?.email || ""}

@@ -92,6 +92,6 @@ export const archivesService = {
   },
 
   delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/archives/${id}`);
+    await apiClient.delete(`/archives/${id}`, { data: { confirmar_eliminacion: true } });
   },
 };

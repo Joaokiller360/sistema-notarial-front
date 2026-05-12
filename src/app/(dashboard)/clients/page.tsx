@@ -27,6 +27,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { archivesService, clientsService } from "@/services";
 import type { ClientPayload } from "@/services/clients.service";
 import type { Archive } from "@/types";
+import { CharCounter } from "@/components/common/CharCounter";
+import { NacionalidadSelect } from "@/components/common/NacionalidadSelect";
 
 interface DerivedClient {
   id: string;
@@ -246,6 +248,8 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
+  const NOMBRE_MAX = 250;
+
   // Single-add dialog
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addForm, setAddForm] = useState({
@@ -260,6 +264,8 @@ export default function ClientsPage() {
   // Errores inline del diálogo
   const [cedulaDialogError, setCedulaDialogError] = useState("");
   const [pasaporteDialogError, setPasaporteDialogError] = useState("");
+  const [nombreDialogError, setNombreDialogError] = useState("");
+  const [nacionalidadDialogError, setNacionalidadDialogError] = useState("");
 
   // Bulk import dialog
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -317,25 +323,42 @@ export default function ClientsPage() {
     setAddForm({ nombresCompletos: "", cedulaORuc: "", pasaporte: "", isPasaporte: false, nacionalidad: "" });
     setCedulaDialogError("");
     setPasaporteDialogError("");
+    setNombreDialogError("");
+    setNacionalidadDialogError("");
   };
 
   // Single add
   const handleAdd = async () => {
-    if (!addForm.nombresCompletos.trim() || !addForm.nacionalidad.trim()) {
-      toast.error("Nombre y nacionalidad son requeridos");
-      return;
+    let hasError = false;
+
+    if (!addForm.nombresCompletos.trim()) {
+      setNombreDialogError("El nombre es requerido");
+      hasError = true;
+    } else if (addForm.nombresCompletos.trim().length > NOMBRE_MAX) {
+      setNombreDialogError(`No puede superar los ${NOMBRE_MAX} caracteres`);
+      hasError = true;
+    } else {
+      setNombreDialogError("");
     }
 
-    // Validación final del formulario
+    if (!addForm.nacionalidad.trim()) {
+      setNacionalidadDialogError("Debe seleccionar una nacionalidad");
+      hasError = true;
+    } else {
+      setNacionalidadDialogError("");
+    }
+
     if (addForm.isPasaporte) {
       const v = addForm.pasaporte.trim();
-      if (!v) { setPasaporteDialogError("El pasaporte es requerido"); return; }
-      if (!/^[a-zA-Z0-9]+$/.test(v)) { setPasaporteDialogError("El pasaporte debe ser alfanumérico"); return; }
-      if (v.length < 5 || v.length > 20) { setPasaporteDialogError("El pasaporte debe tener entre 5 y 20 caracteres"); return; }
+      if (!v) { setPasaporteDialogError("El pasaporte es requerido"); hasError = true; }
+      else if (!/^[a-zA-Z0-9]+$/.test(v)) { setPasaporteDialogError("El pasaporte debe ser alfanumérico"); hasError = true; }
+      else if (v.length < 5 || v.length > 20) { setPasaporteDialogError("El pasaporte debe tener entre 5 y 20 caracteres"); hasError = true; }
     } else if (addForm.cedulaORuc && !/^\d+$/.test(addForm.cedulaORuc)) {
       setCedulaDialogError("La cédula/RUC debe contener solo números");
-      return;
+      hasError = true;
     }
+
+    if (hasError) return;
 
     setIsAdding(true);
     try {
@@ -590,12 +613,26 @@ export default function ClientsPage() {
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Nombre completo <span className="text-destructive">*</span></Label>
+              <div className="flex items-center justify-between">
+                <Label>Nombre completo <span className="text-destructive">*</span></Label>
+                <CharCounter
+                  current={addForm.nombresCompletos.length}
+                  max={NOMBRE_MAX}
+                  warnAt={20}
+                />
+              </div>
               <Input
                 placeholder="Ej. Juan Carlos Pérez López"
+                maxLength={NOMBRE_MAX}
                 value={addForm.nombresCompletos}
-                onChange={(e) => setAddForm((p) => ({ ...p, nombresCompletos: e.target.value }))}
+                onChange={(e) => {
+                  setAddForm((p) => ({ ...p, nombresCompletos: e.target.value }));
+                  setNombreDialogError("");
+                }}
               />
+              {nombreDialogError && (
+                <p className="text-xs text-destructive">{nombreDialogError}</p>
+              )}
             </div>
 
             {/* Tareas 1-2-3: cédula/RUC numérica + checkbox pasaporte + campo pasaporte */}
@@ -672,10 +709,13 @@ export default function ClientsPage() {
 
             <div className="space-y-1.5">
               <Label>Nacionalidad <span className="text-destructive">*</span></Label>
-              <Input
-                placeholder="Ej. Ecuatoriana"
+              <NacionalidadSelect
                 value={addForm.nacionalidad}
-                onChange={(e) => setAddForm((p) => ({ ...p, nacionalidad: e.target.value }))}
+                onChange={(v) => {
+                  setAddForm((p) => ({ ...p, nacionalidad: v }));
+                  setNacionalidadDialogError("");
+                }}
+                error={nacionalidadDialogError}
               />
             </div>
           </div>
@@ -687,7 +727,14 @@ export default function ClientsPage() {
             <Button
               className="cursor-pointer"
               onClick={handleAdd}
-              disabled={isAdding || !addForm.nombresCompletos.trim() || !addForm.nacionalidad.trim()}
+              disabled={
+                isAdding ||
+                !addForm.nombresCompletos.trim() ||
+                !addForm.nacionalidad.trim() ||
+                !!nombreDialogError ||
+                !!cedulaDialogError ||
+                !!pasaporteDialogError
+              }
             >
               {isAdding ? (
                 <span className="flex items-center gap-2">

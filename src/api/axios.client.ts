@@ -94,9 +94,47 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Translate common HTTP error messages to Spanish
+    if (error.response) {
+      const data = error.response.data as Record<string, unknown> | undefined;
+      if (data && typeof data.message === "string") {
+        data.message = translateError(data.message);
+      }
+    }
+
     return Promise.reject(error);
   }
 );
+
+const ERROR_TRANSLATIONS: Record<string, string> = {
+  "Unauthorized": "No autorizado. Por favor inicia sesión.",
+  "Forbidden": "No tienes permisos para realizar esta acción.",
+  "Not Found": "El recurso solicitado no fue encontrado.",
+  "Internal Server Error": "Error interno del servidor. Intenta de nuevo.",
+  "Bad Request": "Solicitud inválida.",
+  "Conflict": "Ya existe un registro con esos datos.",
+  "Unprocessable Entity": "Los datos enviados no son válidos.",
+  "Too Many Requests": "Demasiadas solicitudes. Espera un momento.",
+  "Service Unavailable": "Servicio no disponible. Intenta más tarde.",
+  "Gateway Timeout": "Tiempo de espera agotado. Intenta de nuevo.",
+  "Network Error": "Error de red. Verifica tu conexión.",
+  "Request failed with status code 400": "Solicitud inválida.",
+  "Request failed with status code 401": "No autorizado. Por favor inicia sesión.",
+  "Request failed with status code 403": "No tienes permisos para realizar esta acción.",
+  "Request failed with status code 404": "El recurso solicitado no fue encontrado.",
+  "Request failed with status code 409": "Ya existe un registro con esos datos.",
+  "Request failed with status code 422": "Los datos enviados no son válidos.",
+  "Request failed with status code 500": "Error interno del servidor. Intenta de nuevo.",
+  "Request failed with status code 503": "Servicio no disponible. Intenta más tarde.",
+};
+
+function translateError(message: string): string {
+  if (ERROR_TRANSLATIONS[message]) return ERROR_TRANSLATIONS[message];
+  for (const [en, es] of Object.entries(ERROR_TRANSLATIONS)) {
+    if (message.toLowerCase().includes(en.toLowerCase())) return es;
+  }
+  return message;
+}
 
 function getUserIdFromToken(): string | null {
   const token = tokenUtils.getAccessToken();

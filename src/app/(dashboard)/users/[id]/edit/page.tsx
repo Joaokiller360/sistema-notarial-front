@@ -20,6 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PageLoader } from "@/components/common/LoadingSpinner";
+import { CharCounter } from "@/components/common/CharCounter";
 import { useUsers, usePermissions } from "@/hooks";
 import { rolesService, type RoleItem } from "@/services";
 
@@ -30,9 +31,17 @@ const ROLE_TYPE_LABELS: Record<string, string> = {
   ARCHIVADOR: "Archivador",
 };
 
+const NOMBRE_MAX = 250;
+
 const userSchema = z.object({
-  firstName: z.string().min(2, "Nombre requerido"),
-  lastName: z.string().min(2, "Apellido requerido"),
+  firstName: z
+    .string()
+    .min(2, "Nombre requerido")
+    .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
+  lastName: z
+    .string()
+    .min(2, "Apellido requerido")
+    .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
   email: z.string().email("Correo electrónico inválido"),
   roleId: z.string().min(1, "Selecciona un rol"),
   isActive: z.boolean(),
@@ -57,11 +66,14 @@ export default function EditUserPage() {
     setValue,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitted, isValid },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: { isActive: true, roleId: "" },
+    defaultValues: { isActive: true, roleId: "", firstName: "", lastName: "" },
   });
+
+  const firstNameValue = watch("firstName") || "";
+  const lastNameValue = watch("lastName") || "";
 
   useEffect(() => {
     if (id) fetchUser(id);
@@ -69,7 +81,6 @@ export default function EditUserPage() {
 
   useEffect(() => {
     if (user && roles.length > 0) {
-      // Encontrar el rol actual del usuario buscando por type
       const userRoleType = user.roles?.[0];
       const matchedRole = roles.find((r) => r.type === userRoleType);
 
@@ -96,7 +107,6 @@ export default function EditUserPage() {
 
   if (isLoading) return <PageLoader />;
 
-  // NOTARIO cannot edit SUPER_ADMIN users
   if (!isSuperAdmin() && user?.roles.includes("SUPER_ADMIN")) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
@@ -121,7 +131,11 @@ export default function EditUserPage() {
           <ArrowLeft className="w-4 h-4 mr-1.5" />
           Cancelar
         </ButtonLink>
-        <Button type="submit" className="cursor-pointer" disabled={isSubmitting}>
+        <Button
+          type="submit"
+          className="cursor-pointer"
+          disabled={isSubmitting || (isSubmitted && !isValid)}
+        >
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -147,15 +161,29 @@ export default function EditUserPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="firstName">Nombre</Label>
-                <Input id="firstName" {...register("firstName")} />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="firstName">Nombre</Label>
+                  <CharCounter current={firstNameValue.length} max={NOMBRE_MAX} warnAt={20} />
+                </div>
+                <Input
+                  id="firstName"
+                  maxLength={NOMBRE_MAX}
+                  {...register("firstName")}
+                />
                 {errors.firstName && (
                   <p className="text-xs text-destructive">{errors.firstName.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lastName">Apellido</Label>
-                <Input id="lastName" {...register("lastName")} />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <CharCounter current={lastNameValue.length} max={NOMBRE_MAX} warnAt={20} />
+                </div>
+                <Input
+                  id="lastName"
+                  maxLength={NOMBRE_MAX}
+                  {...register("lastName")}
+                />
                 {errors.lastName && (
                   <p className="text-xs text-destructive">{errors.lastName.message}</p>
                 )}

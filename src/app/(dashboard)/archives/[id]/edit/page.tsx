@@ -23,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/common/PageHeader";
 import { FileUpload } from "@/components/common/FileUpload";
 import { GrantorForm } from "@/components/common/GrantorForm";
+import { CharCounter } from "@/components/common/CharCounter";
 import { PageLoader } from "@/components/common/LoadingSpinner";
 import { useArchives, useSystemSettings } from "@/hooks";
 import type { ArchiveType } from "@/types";
@@ -35,16 +36,24 @@ const ARCHIVE_TYPES: { value: ArchiveType; label: string }[] = [
   { value: "O", label: "Otro" },
 ];
 
+const OBSERVATIONS_MAX = 500;
+const NOMBRE_MAX = 250;
+
+const OBS_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]*$/;
+
 const personSchema = z
   .object({
-    nombresCompletos: z.string().min(2, "Nombre requerido").max(200),
+    nombresCompletos: z
+      .string()
+      .min(2, "Nombre requerido")
+      .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
     isPasaporte: z.boolean().optional(),
     cedulaORuc: z
       .string()
       .refine((v) => !v || /^\d+$/.test(v), "La cédula/RUC debe contener solo números")
       .refine(
         (v) => !v || v.length === 10 || v.length === 13,
-        "Cédula debe tener 10 dígitos o RUC 13 dígitos"
+        "Cédula: 10 dígitos / RUC: 13 dígitos"
       ),
     pasaporte: z
       .string()
@@ -54,19 +63,44 @@ const personSchema = z
         "El pasaporte debe tener entre 5 y 20 caracteres"
       )
       .optional(),
-    nacionalidad: z.string().min(2, "Nacionalidad requerida").max(100),
+    nacionalidad: z
+      .string()
+      .min(1, "Debe seleccionar una nacionalidad")
+      .max(100),
   })
   .superRefine((data, ctx) => {
     if (data.isPasaporte && !data.pasaporte) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pasaporte requerido", path: ["pasaporte"] });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pasaporte requerido",
+        path: ["pasaporte"],
+      });
     }
   });
 
 const archiveSchema = z.object({
   type: z.enum(["A", "C", "D", "O", "P"]),
-  code: z.string().min(1, "El código es requerido").max(17, "Máximo 17 caracteres"),
-  documentDate: z.string().optional(),
-  observations: z.string().max(2000).optional(),
+  code: z
+    .string()
+    .min(1, "El código es requerido")
+    .max(17, "Máximo 17 caracteres")
+    .regex(/^[a-zA-Z0-9]*$/, "Solo letras y números, sin espacios ni caracteres especiales"),
+  documentDate: z
+    .string()
+    .optional()
+    .refine((v) => {
+      if (!v) return true;
+      const today = new Date().toISOString().split("T")[0];
+      return v <= today;
+    }, "La fecha no puede ser mayor a la fecha actual"),
+  observations: z
+    .string()
+    .max(OBSERVATIONS_MAX, "No puede superar los 500 caracteres")
+    .refine(
+      (v) => !v || OBS_REGEX.test(v),
+      "El campo Observaciones solo acepta letras y números"
+    )
+    .optional(),
   grantors: z.array(personSchema),
   beneficiaries: z.array(personSchema),
   pdf: z.custom<File | null>().optional(),
@@ -77,17 +111,41 @@ type ArchiveFormData = z.infer<typeof archiveSchema>;
 export default function EditArchivePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { archive, isLoading, fetchArchive, updateArchive, isSubmitting, pdfUploadProgress } = useArchives();
+  const {
+    archive,
+    isLoading,
+    fetchArchive,
+    updateArchive,
+    isSubmitting,
+    pdfUploadProgress,
+  } = useArchives();
   const { config, fetchConfig } = useSystemSettings();
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
+  const todayStr = new Date().toISOString().split("T")[0];
+
   const methods = useForm<ArchiveFormData>({
     resolver: zodResolver(archiveSchema),
-    defaultValues: { type: "A", code: "", documentDate: "", grantors: [], beneficiaries: [], pdf: null },
+    defaultValues: {
+      type: "A",
+      code: "",
+      documentDate: "",
+      observations: "",
+      grantors: [],
+      beneficiaries: [],
+      pdf: null,
+    },
   });
 
-  const { register, handleSubmit, setValue, watch, reset } = methods;
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitted, isValid },
+  } = methods;
 
   useEffect(() => {
     if (id) fetchArchive(id);
@@ -122,6 +180,23 @@ export default function EditArchivePage() {
   }, [archive, reset]);
 
   const pdf = watch("pdf");
+  const observationsValue = watch("observations") ?? "";
+  const codeValue = watch("code") ?? "";
+
+  // Block non-alphanumeric keys in the code field
+  const handleCodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter", "Home", "End"];
+    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!/^[a-zA-Z0-9]$/.test(e.key)) e.preventDefault();
+  };
+
+  // Block special chars in observations (archive-only rule)
+  const handleObsKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+      "Tab", "Enter", "Home", "End", "Shift", "Control", "Meta", "Alt"];
+    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!OBS_REGEX.test(e.key)) e.preventDefault();
+  };
 
   const onSubmit = async (data: ArchiveFormData) => {
     const cleanPerson = (p: {
@@ -143,7 +218,9 @@ export default function EditArchivePage() {
     const result = await updateArchive(id, {
       type: data.type,
       code: data.code,
-      documentDate: data.documentDate ? new Date(data.documentDate).toISOString() : undefined,
+      documentDate: data.documentDate
+        ? new Date(data.documentDate).toISOString()
+        : undefined,
       observations: data.observations,
       grantors: data.grantors.map(cleanPerson),
       beneficiaries: data.beneficiaries.map(cleanPerson),
@@ -172,7 +249,11 @@ export default function EditArchivePage() {
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             Cancelar
           </ButtonLink>
-          <Button className="cursor-pointer" type="submit" disabled={isSubmitting}>
+          <Button
+            className="cursor-pointer"
+            type="submit"
+            disabled={isSubmitting || (isSubmitted && !isValid)}
+          >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -215,6 +296,9 @@ export default function EditArchivePage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {errors.type && (
+                      <p className="text-xs text-destructive">{errors.type.message}</p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -222,28 +306,55 @@ export default function EditArchivePage() {
                     <Input
                       id="documentDate"
                       type="date"
+                      max={todayStr}
                       {...register("documentDate")}
                     />
+                    {errors.documentDate && (
+                      <p className="text-xs text-destructive">{errors.documentDate.message}</p>
+                    )}
                   </div>
                 </div>
+
+                {/* Código — solo alfanumérico */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="code">Código del Archivo</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="code">Código del Archivo</Label>
+                    <CharCounter current={codeValue.length} max={17} warnAt={3} />
+                  </div>
                   <Input
                     id="code"
                     className="font-mono"
                     maxLength={17}
                     placeholder="Ingresa el código (máx. 17 caracteres)"
+                    onKeyDown={handleCodeKeyDown}
                     {...register("code")}
                   />
+                  {errors.code && (
+                    <p className="text-xs text-destructive">{errors.code.message}</p>
+                  )}
                 </div>
+
+                {/* Observaciones — max 500 + solo letras/números/espacios */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="observations">Observaciones</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="observations">Observaciones</Label>
+                    <CharCounter
+                      current={observationsValue.length}
+                      max={OBSERVATIONS_MAX}
+                      warnAt={50}
+                    />
+                  </div>
                   <Textarea
                     id="observations"
                     rows={3}
                     className="resize-none"
+                    maxLength={OBSERVATIONS_MAX}
+                    onKeyDown={handleObsKeyDown}
                     {...register("observations")}
                   />
+                  {errors.observations && (
+                    <p className="text-xs text-destructive">{errors.observations.message}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -289,9 +400,10 @@ export default function EditArchivePage() {
               </CardHeader>
               <CardContent>
                 {archive.pdfUrl && (
-                  <div className="mb-3 p-2 rounded bg-muted/30 border border-border">
+                  <div className="mb-3 rounded border border-border bg-muted/30 p-2">
                     <p className="text-xs text-muted-foreground">
-                      Actual: <span className="text-foreground font-medium">documento.pdf</span>
+                      Actual:{" "}
+                      <span className="font-medium text-foreground">documento.pdf</span>
                     </p>
                   </div>
                 )}
@@ -313,7 +425,9 @@ export default function EditArchivePage() {
               <CardContent className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Código</span>
-                  <span className="font-mono font-bold text-primary text-xs">{archive.code}</span>
+                  <span className="font-mono font-bold text-primary text-xs">
+                    {archive.code}
+                  </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm">

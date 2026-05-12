@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Filter, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Search, Filter, Pencil, Trash2, ToggleLeft, ToggleRight, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
@@ -60,9 +60,13 @@ export default function UsersPage() {
   const { users, isLoading, fetchUsers, deleteUser } = useUsers();
   const { isSuperAdmin, isNotario, canManageUsers } = usePermissions();
 
-  // Toggle/editar: el NOTARIO no puede actuar sobre cuentas SUPER_ADMIN
+  // El NOTARIO no puede editar cuentas SUPER_ADMIN
   const canActOn = (target: User) =>
     isSuperAdmin() || !(target.roles ?? []).includes("SUPER_ADMIN");
+
+  // La cuenta SUPER_ADMIN NUNCA puede ser desactivada (independiente de quién intenta)
+  const isSuperAdminTarget = (target: User) =>
+    (target.roles ?? []).includes("SUPER_ADMIN");
 
   // Ocultar el botón Eliminar cuando el target es una cuenta SUPER_ADMIN
   const canDeleteUser = (target: User) =>
@@ -106,6 +110,11 @@ export default function UsersPage() {
   }, [filteredUsers, page]);
 
   const handleToggleActive = async (user: User) => {
+    // Guard: super_admin account cannot be deactivated from any path
+    if ((user.roles ?? []).includes("SUPER_ADMIN")) {
+      toast.error("La cuenta Super Admin no puede ser desactivada");
+      return;
+    }
     try {
       await usersService.update(user.id, { isActive: !user.isActive });
       toast.success(`Usuario ${user.isActive ? "desactivado" : "activado"} correctamente`);
@@ -189,22 +198,35 @@ export default function UsersPage() {
       key: "actions",
       label: "Acciones",
       className: "text-right",
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1">
-          {canActOn(row) && (
-            <>
+      render: (row) => {
+        const superAdminLocked = isSuperAdminTarget(row);
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {/* Toggle Desactivar/Activar: siempre visible, deshabilitado para SUPER_ADMIN */}
+            <span
+              title={superAdminLocked ? "La cuenta Super Admin no puede ser desactivada" : undefined}
+              className="inline-flex"
+            >
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 cursor-pointer"
-                onClick={() => handleToggleActive(row)}
-                title={row.isActive ? "Desactivar" : "Activar"}
+                className="h-8 w-8 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => !superAdminLocked && handleToggleActive(row)}
+                disabled={superAdminLocked}
+                aria-label={superAdminLocked ? "No se puede desactivar Super Admin" : row.isActive ? "Desactivar" : "Activar"}
               >
-                {row.isActive
-                  ? <ToggleRight className="w-4 h-4 text-emerald-400" />
-                  : <ToggleLeft className="w-4 h-4" />
-                }
+                {superAdminLocked ? (
+                  <Ban className="w-4 h-4 text-muted-foreground" />
+                ) : row.isActive ? (
+                  <ToggleRight className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <ToggleLeft className="w-4 h-4" />
+                )}
               </Button>
+            </span>
+
+            {/* Editar: solo cuando canActOn */}
+            {canActOn(row) && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -213,21 +235,22 @@ export default function UsersPage() {
               >
                 <Pencil className="w-3.5 h-3.5" />
               </Button>
-            </>
-          )}
-          {/* Tarea 5 & 7: eliminar oculto para cuentas SUPER_ADMIN */}
-          {canDeleteUser(row) && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 cursor-pointer text-destructive"
-              onClick={() => setDeleteId(row.id)}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </div>
-      ),
+            )}
+
+            {/* Eliminar: oculto para cuentas SUPER_ADMIN */}
+            {canDeleteUser(row) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 cursor-pointer text-destructive"
+                onClick={() => setDeleteId(row.id)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 

@@ -165,6 +165,15 @@
   html {
     @apply font-sans;
   }
+  /* word-break global: prevent long strings from breaking layouts */
+  td, th, p, span, h1, h2, h3, h4, h5, h6, li, div {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  /* codes/hashes use break-all */
+  .font-mono {
+    word-break: break-all;
+  }
 }
 
 @layer utilities {

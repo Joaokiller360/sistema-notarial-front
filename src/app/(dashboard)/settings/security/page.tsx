@@ -71,13 +71,13 @@ export default function SecurityPage() {
       />
 
       <div className="max-w-2xl">
-        <Card className="border-border bg-sidebar">
+        <Card className="border-border bg-background">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-sidebar-foreground">
-              <Shield className="w-4 h-4 text-sidebar-primary" />
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Shield className="w-4 h-4 text-foreground" />
               Cambiar Contraseña
             </CardTitle>
-            <CardDescription className="text-sidebar-foreground/60">
+            <CardDescription className="text-foreground/60">
               Usa una contraseña de al menos 8 caracteres, con mayúsculas y números.
             </CardDescription>
           </CardHeader>
@@ -85,7 +85,7 @@ export default function SecurityPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Current password */}
               <div className="space-y-1.5">
-                <Label htmlFor="currentPassword" className="text-sidebar-foreground">
+                <Label htmlFor="currentPassword" className="text-foreground">
                   Contraseña Actual
                 </Label>
                 <div className="relative">
@@ -99,7 +99,7 @@ export default function SecurityPage() {
                   <button
                     type="button"
                     onClick={() => setShowCurrent((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-foreground/50 hover:text-foreground"
                   >
                     {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -111,7 +111,7 @@ export default function SecurityPage() {
 
               {/* New password */}
               <div className="space-y-1.5">
-                <Label htmlFor="newPassword" className="text-sidebar-foreground">
+                <Label htmlFor="newPassword" className="text-foreground">
                   Nueva Contraseña
                 </Label>
                 <div className="relative">
@@ -125,7 +125,7 @@ export default function SecurityPage() {
                   <button
                     type="button"
                     onClick={() => setShowNew((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-foreground/50 hover:text-foreground"
                   >
                     {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>

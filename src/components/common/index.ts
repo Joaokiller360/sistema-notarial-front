@@ -7,3 +7,5 @@ export { Pagination } from "./Pagination";
 export { FileUpload } from "./FileUpload";
 export { StatCard } from "./StatCard";
 export { GrantorForm } from "./GrantorForm";
+export { CharCounter } from "./CharCounter";
+export { NacionalidadSelect } from "./NacionalidadSelect";

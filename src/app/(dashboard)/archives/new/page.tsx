@@ -25,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/common/PageHeader";
 import { FileUpload } from "@/components/common/FileUpload";
 import { GrantorForm } from "@/components/common/GrantorForm";
+import { CharCounter } from "@/components/common/CharCounter";
 import { useArchives, useSystemSettings } from "@/hooks";
 import type { ArchiveType } from "@/types";
 
@@ -36,16 +37,25 @@ const ARCHIVE_TYPES: { value: ArchiveType; label: string }[] = [
   { value: "O", label: "Otro" },
 ];
 
+const OBSERVATIONS_MAX = 500;
+const NOMBRE_MAX = 250;
+
+// Regex: only letters (incl. accented Spanish), digits, and spaces
+const OBS_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]*$/;
+
 const personSchema = z
   .object({
-    nombresCompletos: z.string().min(2, "Nombre requerido").max(200),
+    nombresCompletos: z
+      .string()
+      .min(2, "Nombre requerido")
+      .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
     isPasaporte: z.boolean().optional(),
     cedulaORuc: z
       .string()
       .refine((v) => !v || /^\d+$/.test(v), "La cédula/RUC debe contener solo números")
       .refine(
         (v) => !v || v.length === 10 || v.length === 13,
-        "Cédula debe tener 10 dígitos o RUC 13 dígitos"
+        "Cédula: 10 dígitos / RUC: 13 dígitos"
       ),
     pasaporte: z
       .string()
@@ -55,22 +65,55 @@ const personSchema = z
         "El pasaporte debe tener entre 5 y 20 caracteres"
       )
       .optional(),
-    nacionalidad: z.string().min(2, "Nacionalidad requerida").max(100),
+    nacionalidad: z
+      .string()
+      .min(1, "Debe seleccionar una nacionalidad")
+      .max(100),
   })
   .superRefine((data, ctx) => {
     if (data.isPasaporte && !data.pasaporte) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pasaporte requerido", path: ["pasaporte"] });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pasaporte requerido",
+        path: ["pasaporte"],
+      });
     }
   });
 
 const archiveSchema = z.object({
   type: z.enum(["A", "C", "D", "O", "P"]),
-  code: z.string().min(1, "El código es requerido").max(17, "Máximo 17 caracteres"),
-  documentDate: z.string().optional(),
-  observations: z.string().max(2000).optional(),
+  code: z
+    .string()
+    .min(1, "El código es requerido")
+    .max(17, "Máximo 17 caracteres")
+    .regex(/^[a-zA-Z0-9]*$/, "Solo letras y números, sin espacios ni caracteres especiales"),
+  documentDate: z
+    .string()
+    .optional()
+    .refine((v) => {
+      if (!v) return true;
+      const today = new Date().toISOString().split("T")[0];
+      return v <= today;
+    }, "La fecha no puede ser mayor a la fecha actual"),
+  observations: z
+    .string()
+    .max(OBSERVATIONS_MAX, "No puede superar los 500 caracteres")
+    .refine(
+      (v) => !v || OBS_REGEX.test(v),
+      "El campo Observaciones solo acepta letras y números"
+    )
+    .optional(),
   grantors: z.array(personSchema),
   beneficiaries: z.array(personSchema),
-  pdf: z.custom<File | null>().optional(),
+  pdf: z.custom<File | null>().superRefine((v, ctx) => {
+    if (!(v instanceof File)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Debe adjuntar un archivo PDF para continuar" });
+      return;
+    }
+    if (v.type !== "application/pdf" && !v.name.toLowerCase().endsWith(".pdf")) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Solo se permiten archivos en formato PDF" });
+    }
+  }),
 });
 
 type ArchiveFormData = z.infer<typeof archiveSchema>;
@@ -84,21 +127,48 @@ function NewArchiveForm() {
   const { config, fetchConfig } = useSystemSettings();
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
+  const todayStr = new Date().toISOString().split("T")[0];
+
   const methods = useForm<ArchiveFormData>({
     resolver: zodResolver(archiveSchema),
     defaultValues: {
       type: defaultType || undefined,
       code: "",
       documentDate: "",
+      observations: "",
       grantors: [],
       beneficiaries: [],
       pdf: null,
     },
   });
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = methods;
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitted, isValid },
+  } = methods;
+
   const pdf = watch("pdf");
   const typeValue = watch("type");
+  const observationsValue = watch("observations") ?? "";
+  const codeValue = watch("code") ?? "";
+
+  // Block non-alphanumeric keys in the code field
+  const handleCodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter", "Home", "End"];
+    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!/^[a-zA-Z0-9]$/.test(e.key)) e.preventDefault();
+  };
+
+  // Block special chars in observations (archive-only rule)
+  const handleObsKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+      "Tab", "Enter", "Home", "End", "Shift", "Control", "Meta", "Alt"];
+    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!OBS_REGEX.test(e.key)) e.preventDefault();
+  };
 
   const onSubmit = async (data: ArchiveFormData) => {
     const cleanPerson = (p: {
@@ -109,7 +179,6 @@ function NewArchiveForm() {
       nacionalidad: string;
     }) => ({
       nombresCompletos: p.nombresCompletos,
-      // Si es pasaporte, enviamos el número de pasaporte en el campo cedulaORuc (campo único del API)
       ...(p.isPasaporte && p.pasaporte
         ? { cedulaORuc: p.pasaporte }
         : p.cedulaORuc
@@ -121,7 +190,9 @@ function NewArchiveForm() {
     const result = await createArchive({
       type: data.type,
       code: data.code,
-      documentDate: data.documentDate ? new Date(data.documentDate).toISOString() : undefined,
+      documentDate: data.documentDate
+        ? new Date(data.documentDate).toISOString()
+        : undefined,
       observations: data.observations,
       grantors: data.grantors.map(cleanPerson),
       beneficiaries: data.beneficiaries.map(cleanPerson),
@@ -141,7 +212,11 @@ function NewArchiveForm() {
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             Volver
           </ButtonLink>
-          <Button className="cursor-pointer" type="submit" disabled={isSubmitting}>
+          <Button
+            className="cursor-pointer"
+            type="submit"
+            disabled={isSubmitting || (isSubmitted && !isValid)}
+          >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -158,7 +233,6 @@ function NewArchiveForm() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Información general */}
             <Card className="border-border bg-card">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -167,7 +241,6 @@ function NewArchiveForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Tipo + Fecha del documento */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label>Tipo de Documento</Label>
@@ -196,6 +269,7 @@ function NewArchiveForm() {
                     <Input
                       id="documentDate"
                       type="date"
+                      max={todayStr}
                       {...register("documentDate")}
                     />
                     {errors.documentDate && (
@@ -204,14 +278,18 @@ function NewArchiveForm() {
                   </div>
                 </div>
 
-                {/* Código */}
+                {/* Código — solo alfanumérico */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="code">Código del Archivo</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="code">Código del Archivo</Label>
+                    <CharCounter current={codeValue.length} max={17} warnAt={3} />
+                  </div>
                   <Input
                     id="code"
                     placeholder="Ingresa el código (máx. 17 caracteres)"
                     className="font-mono"
                     maxLength={17}
+                    onKeyDown={handleCodeKeyDown}
                     {...register("code")}
                   />
                   {errors.code && (
@@ -219,14 +297,23 @@ function NewArchiveForm() {
                   )}
                 </div>
 
-                {/* Observaciones */}
+                {/* Observaciones — max 500 + solo letras/números/espacios */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="observations">Observaciones</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="observations">Observaciones</Label>
+                    <CharCounter
+                      current={observationsValue.length}
+                      max={OBSERVATIONS_MAX}
+                      warnAt={50}
+                    />
+                  </div>
                   <Textarea
                     id="observations"
                     placeholder="Observaciones adicionales sobre el archivo..."
                     rows={3}
                     className="resize-none"
+                    maxLength={OBSERVATIONS_MAX}
+                    onKeyDown={handleObsKeyDown}
                     {...register("observations")}
                   />
                   {errors.observations && (
@@ -236,7 +323,6 @@ function NewArchiveForm() {
               </CardContent>
             </Card>
 
-            {/* Otorgantes (opcional) */}
             <Card className="border-border bg-card">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -250,7 +336,6 @@ function NewArchiveForm() {
               </CardContent>
             </Card>
 
-            {/* A favor de (opcional) */}
             <Card className="border-border bg-card">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -269,22 +354,25 @@ function NewArchiveForm() {
             </Card>
           </div>
 
-          {/* Columna lateral */}
           <div className="space-y-6">
             <Card className="border-border bg-card">
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
                   Documento PDF
+                  <span className="text-destructive ml-0.5">*</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <FileUpload
                   value={(pdf as File) || null}
-                  onChange={(file) => setValue("pdf", file)}
+                  onChange={(file) => setValue("pdf", file, { shouldValidate: true })}
                   maxSizeMB={config?.maxPdfSizeMb ?? 10}
                   uploadProgress={pdfUploadProgress}
                 />
+                {errors.pdf && (
+                  <p className="mt-2 text-xs text-destructive">{errors.pdf.message as string}</p>
+                )}
               </CardContent>
             </Card>
 
@@ -305,7 +393,9 @@ function NewArchiveForm() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Código</span>
-                  <span className="font-mono font-semibold text-primary text-xs">{watch("code") || "—"}</span>
+                  <span className="font-mono font-semibold text-primary text-xs">
+                    {watch("code") || "—"}
+                  </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm">
@@ -319,7 +409,9 @@ function NewArchiveForm() {
                 <Separator />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">PDF</span>
-                  <span className="font-medium">{pdf ? "Adjunto" : "Sin adjunto"}</span>
+                  <span className={`font-medium text-xs ${!pdf ? "text-destructive" : ""}`}>
+                    {pdf ? "Adjunto" : "Requerido"}
+                  </span>
                 </div>
               </CardContent>
             </Card>
