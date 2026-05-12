@@ -14,6 +14,7 @@ interface ClientSearchInputProps {
   onSelect: (client: Client) => void;
   placeholder?: string;
   className?: string;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 function useDebounce(value: string, delay: number) {
@@ -31,6 +32,7 @@ export function ClientSearchInput({
   onSelect,
   placeholder,
   className,
+  onKeyDown,
 }: ClientSearchInputProps) {
   const [suggestions, setSuggestions] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -140,6 +142,7 @@ export function ClientSearchInput({
           ref={inputRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
           onFocus={() => {
             if (suggestions.length > 0) {
               updateDropdownPosition();

@@ -35,11 +35,32 @@ const ARCHIVE_TYPES: { value: ArchiveType; label: string }[] = [
   { value: "O", label: "Otro" },
 ];
 
-const personSchema = z.object({
-  nombresCompletos: z.string().min(2, "Nombre requerido").max(200),
-  cedulaORuc: z.string().min(10, "Mínimo 10 dígitos").max(13, "Máximo 13 dígitos").or(z.literal("")),
-  nacionalidad: z.string().min(2, "Nacionalidad requerida").max(100),
-});
+const personSchema = z
+  .object({
+    nombresCompletos: z.string().min(2, "Nombre requerido").max(200),
+    isPasaporte: z.boolean().optional(),
+    cedulaORuc: z
+      .string()
+      .refine((v) => !v || /^\d+$/.test(v), "La cédula/RUC debe contener solo números")
+      .refine(
+        (v) => !v || v.length === 10 || v.length === 13,
+        "Cédula debe tener 10 dígitos o RUC 13 dígitos"
+      ),
+    pasaporte: z
+      .string()
+      .refine((v) => !v || /^[a-zA-Z0-9]+$/.test(v), "El pasaporte debe ser alfanumérico")
+      .refine(
+        (v) => !v || (v.length >= 5 && v.length <= 20),
+        "El pasaporte debe tener entre 5 y 20 caracteres"
+      )
+      .optional(),
+    nacionalidad: z.string().min(2, "Nacionalidad requerida").max(100),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isPasaporte && !data.pasaporte) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pasaporte requerido", path: ["pasaporte"] });
+    }
+  });
 
 const archiveSchema = z.object({
   type: z.enum(["A", "C", "D", "O", "P"]),
@@ -84,11 +105,15 @@ export default function EditArchivePage() {
         grantors: archive.grantors.map((g) => ({
           nombresCompletos: g.nombresCompletos,
           cedulaORuc: g.cedulaORuc,
+          isPasaporte: false,
+          pasaporte: "",
           nacionalidad: g.nacionalidad,
         })),
         beneficiaries: archive.beneficiaries.map((b) => ({
           nombresCompletos: b.nombresCompletos,
           cedulaORuc: b.cedulaORuc,
+          isPasaporte: false,
+          pasaporte: "",
           nacionalidad: b.nacionalidad,
         })),
         pdf: null,
@@ -99,9 +124,19 @@ export default function EditArchivePage() {
   const pdf = watch("pdf");
 
   const onSubmit = async (data: ArchiveFormData) => {
-    const cleanPerson = (p: { nombresCompletos: string; cedulaORuc: string; nacionalidad: string }) => ({
+    const cleanPerson = (p: {
+      nombresCompletos: string;
+      isPasaporte?: boolean;
+      cedulaORuc: string;
+      pasaporte?: string;
+      nacionalidad: string;
+    }) => ({
       nombresCompletos: p.nombresCompletos,
-      ...(p.cedulaORuc ? { cedulaORuc: p.cedulaORuc } : {}),
+      ...(p.isPasaporte && p.pasaporte
+        ? { cedulaORuc: p.pasaporte }
+        : p.cedulaORuc
+        ? { cedulaORuc: p.cedulaORuc }
+        : {}),
       nacionalidad: p.nacionalidad,
     });
 

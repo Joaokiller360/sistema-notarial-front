@@ -82,11 +82,13 @@ function extractClients(archives: Archive[]): DerivedClient[] {
 
 function downloadTemplate() {
   const BOM = "﻿";
+  // Plantilla actualizada con columna pasaporte
   const rows = [
-    "nombresCompletos,cedulaORuc,nacionalidad",
-    "Juan Carlos Pérez López,0102030405,Ecuatoriana",
-    "María García Rodríguez,0987654321,Colombiana",
-    "Carlos Andrés Torres,,Venezolana",
+    "nombresCompletos,cedulaORuc,pasaporte,nacionalidad",
+    "Juan Carlos Pérez López,0102030405,,Ecuatoriana",
+    "María García Rodríguez,,,Colombiana",
+    "Carlos Andrés Torres,,AB123456,Venezolana",
+    "Ana Sofía Ramírez,1234567890123,,Ecuatoriana",
   ].join("\n");
   const blob = new Blob([BOM + rows], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -97,10 +99,18 @@ function downloadTemplate() {
   URL.revokeObjectURL(url);
 }
 
+// Error de validación por fila
+interface RowError {
+  row: number;
+  field: string;
+  message: string;
+}
+
 interface ParseResult {
   rows: ClientPayload[];
   duplicates: number;
   invalid: number;
+  rowErrors: RowError[];
 }
 
 function parseCSVLine(line: string): string[] {
@@ -131,38 +141,99 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-function sanitizeCedula(raw: string): string | undefined {
-  const cleaned = raw.replace(/[\s\-\.]/g, "");
-  return cleaned || undefined;
+function sanitizeCedula(raw: string): string {
+  return raw.replace(/[\s\-\.]/g, "");
+}
+
+// Tarea 4: validadores de campos de identificación
+function validateCedulaORuc(value: string): string | null {
+  if (!value) return null;
+  if (!/^\d+$/.test(value)) return "debe contener solo números";
+  if (value.length === 10) return null;
+  if (value.length === 13) return null;
+  return `debe tener 10 dígitos (cédula) o 13 dígitos (RUC); tiene ${value.length}`;
+}
+
+function validatePasaporte(value: string): string | null {
+  if (!value) return null;
+  if (!/^[a-zA-Z0-9]+$/.test(value)) return "debe ser alfanumérico (sin caracteres especiales)";
+  if (value.length < 5 || value.length > 20) return `debe tener entre 5 y 20 caracteres; tiene ${value.length}`;
+  return null;
 }
 
 function parseCSV(text: string): ParseResult {
   const lines = text.replace(/\r/g, "").trim().split("\n");
-  if (lines.length < 2) return { rows: [], duplicates: 0, invalid: 0 };
+  if (lines.length < 2) return { rows: [], duplicates: 0, invalid: 0, rowErrors: [] };
+
+  // Detectar índices de columnas a partir del encabezado
+  const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/\s/g, ""));
+  const iNombres     = headers.findIndex((h) => h.includes("nombre")) ?? 0;
+  const iCedula      = headers.findIndex((h) => h.includes("cedula") || h.includes("ruc"));
+  const iPasaporte   = headers.findIndex((h) => h.includes("pasaporte"));
+  const iNacionalidad = headers.findIndex((h) => h.includes("nacional"));
+
+  // Fallback posicional para CSVs sin encabezado reconocido
+  const colNombres     = iNombres     >= 0 ? iNombres     : 0;
+  const colCedula      = iCedula      >= 0 ? iCedula      : 1;
+  const colPasaporte   = iPasaporte   >= 0 ? iPasaporte   : -1;
+  const colNacionalidad = iNacionalidad >= 0 ? iNacionalidad : (colPasaporte >= 0 ? 3 : 2);
 
   let invalid = 0;
-  const seen = new Set<string>();
   let duplicates = 0;
+  const seen = new Set<string>();
   const rows: ClientPayload[] = [];
+  const rowErrors: RowError[] = [];
 
-  for (const line of lines.slice(1)) {
+  for (let li = 1; li < lines.length; li++) {
+    const line = lines[li];
     if (!line.trim()) { invalid++; continue; }
+
     const cols = parseCSVLine(line);
-    const nombresCompletos = cols[0] ?? "";
-    const cedulaORuc = sanitizeCedula(cols[1] ?? "");
-    const nacionalidad = (cols[2] ?? "").trim() || "ECUATORIANA";
+    const nombresCompletos = (cols[colNombres] ?? "").trim();
+    const cedulaRaw        = sanitizeCedula(cols[colCedula] ?? "");
+    const pasaporteRaw     = colPasaporte >= 0 ? (cols[colPasaporte] ?? "").trim() : "";
+    const nacionalidad     = (cols[colNacionalidad] ?? "").trim() || "ECUATORIANA";
 
     if (!nombresCompletos) { invalid++; continue; }
 
-    if (cedulaORuc) {
-      if (seen.has(cedulaORuc)) { duplicates++; continue; }
-      seen.add(cedulaORuc);
+    let rowHasError = false;
+
+    // Validar cédula/RUC si viene relleno
+    if (cedulaRaw) {
+      const err = validateCedulaORuc(cedulaRaw);
+      if (err) {
+        rowErrors.push({ row: li, field: "cedulaORuc", message: `Fila ${li}: Cédula/RUC "${cedulaRaw}" ${err}` });
+        rowHasError = true;
+      }
     }
 
-    rows.push({ nombresCompletos, cedulaORuc, nacionalidad });
+    // Validar pasaporte si viene relleno
+    if (pasaporteRaw) {
+      const err = validatePasaporte(pasaporteRaw);
+      if (err) {
+        rowErrors.push({ row: li, field: "pasaporte", message: `Fila ${li}: Pasaporte "${pasaporteRaw}" ${err}` });
+        rowHasError = true;
+      }
+    }
+
+    // Filas con errores de formato se omiten pero no detienen la importación
+    if (rowHasError) { invalid++; continue; }
+
+    const dedupeKey = cedulaRaw || pasaporteRaw;
+    if (dedupeKey) {
+      if (seen.has(dedupeKey)) { duplicates++; continue; }
+      seen.add(dedupeKey);
+    }
+
+    rows.push({
+      nombresCompletos,
+      ...(cedulaRaw ? { cedulaORuc: cedulaRaw } : {}),
+      ...(pasaporteRaw ? { pasaporte: pasaporteRaw } : {}),
+      nacionalidad,
+    });
   }
 
-  return { rows, duplicates, invalid };
+  return { rows, duplicates, invalid, rowErrors };
 }
 
 const PAGE_LIMIT = 15;
@@ -177,13 +248,23 @@ export default function ClientsPage() {
 
   // Single-add dialog
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [addForm, setAddForm] = useState({ nombresCompletos: "", cedulaORuc: "", nacionalidad: "" });
+  const [addForm, setAddForm] = useState({
+    nombresCompletos: "",
+    cedulaORuc: "",
+    pasaporte: "",
+    isPasaporte: false,
+    nacionalidad: "",
+  });
   const [isAdding, setIsAdding] = useState(false);
+
+  // Errores inline del diálogo
+  const [cedulaDialogError, setCedulaDialogError] = useState("");
+  const [pasaporteDialogError, setPasaporteDialogError] = useState("");
 
   // Bulk import dialog
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [parsedRows, setParsedRows] = useState<ClientPayload[]>([]);
-  const [parseStats, setParseStats] = useState({ duplicates: 0, invalid: 0 });
+  const [parseStats, setParseStats] = useState({ duplicates: 0, invalid: 0, rowErrors: [] as RowError[] });
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0, created: 0, errors: 0 });
   const [importFileName, setImportFileName] = useState("");
@@ -232,22 +313,43 @@ export default function ClientsPage() {
 
   const totalPages = Math.ceil(filtered.length / PAGE_LIMIT);
 
+  const resetAddForm = () => {
+    setAddForm({ nombresCompletos: "", cedulaORuc: "", pasaporte: "", isPasaporte: false, nacionalidad: "" });
+    setCedulaDialogError("");
+    setPasaporteDialogError("");
+  };
+
   // Single add
   const handleAdd = async () => {
     if (!addForm.nombresCompletos.trim() || !addForm.nacionalidad.trim()) {
       toast.error("Nombre y nacionalidad son requeridos");
       return;
     }
+
+    // Validación final del formulario
+    if (addForm.isPasaporte) {
+      const v = addForm.pasaporte.trim();
+      if (!v) { setPasaporteDialogError("El pasaporte es requerido"); return; }
+      if (!/^[a-zA-Z0-9]+$/.test(v)) { setPasaporteDialogError("El pasaporte debe ser alfanumérico"); return; }
+      if (v.length < 5 || v.length > 20) { setPasaporteDialogError("El pasaporte debe tener entre 5 y 20 caracteres"); return; }
+    } else if (addForm.cedulaORuc && !/^\d+$/.test(addForm.cedulaORuc)) {
+      setCedulaDialogError("La cédula/RUC debe contener solo números");
+      return;
+    }
+
     setIsAdding(true);
     try {
       await clientsService.create({
         nombresCompletos: addForm.nombresCompletos.trim(),
-        cedulaORuc: addForm.cedulaORuc.trim() || undefined,
+        // Si es pasaporte lo enviamos en cedulaORuc (único campo de identificación del API)
+        cedulaORuc: addForm.isPasaporte
+          ? (addForm.pasaporte.trim() || undefined)
+          : (addForm.cedulaORuc.trim() || undefined),
         nacionalidad: addForm.nacionalidad.trim(),
       });
       toast.success("Cliente agregado exitosamente");
       setShowAddDialog(false);
-      setAddForm({ nombresCompletos: "", cedulaORuc: "", nacionalidad: "" });
+      resetAddForm();
       load();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -265,9 +367,9 @@ export default function ClientsPage() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const { rows, duplicates, invalid } = parseCSV(text);
+      const { rows, duplicates, invalid, rowErrors } = parseCSV(text);
       setParsedRows(rows);
-      setParseStats({ duplicates, invalid });
+      setParseStats({ duplicates, invalid, rowErrors });
     };
     reader.readAsText(file, "UTF-8");
   };
@@ -328,7 +430,7 @@ export default function ClientsPage() {
   const resetImport = () => {
     setParsedRows([]);
     setImportFileName("");
-    setParseStats({ duplicates: 0, invalid: 0 });
+    setParseStats({ duplicates: 0, invalid: 0, rowErrors: [] });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -477,7 +579,7 @@ export default function ClientsPage() {
       )}
 
       {/* ── Dialog: Nuevo Cliente ── */}
-      <Dialog open={showAddDialog} onOpenChange={(v) => { setShowAddDialog(v); if (!v) setAddForm({ nombresCompletos: "", cedulaORuc: "", nacionalidad: "" }); }}>
+      <Dialog open={showAddDialog} onOpenChange={(v) => { setShowAddDialog(v); if (!v) resetAddForm(); }}>
         <DialogContent className="sm:max-w-md bg-card">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -495,14 +597,79 @@ export default function ClientsPage() {
                 onChange={(e) => setAddForm((p) => ({ ...p, nombresCompletos: e.target.value }))}
               />
             </div>
+
+            {/* Tareas 1-2-3: cédula/RUC numérica + checkbox pasaporte + campo pasaporte */}
             <div className="space-y-1.5">
-              <Label>Cédula / RUC <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-              <Input
-                placeholder="0102030405"
-                value={addForm.cedulaORuc}
-                onChange={(e) => setAddForm((p) => ({ ...p, cedulaORuc: e.target.value }))}
-              />
+              <div className="flex items-center justify-between">
+                <Label>{addForm.isPasaporte ? "Pasaporte" : "Cédula / RUC"} <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={addForm.isPasaporte}
+                    onChange={() => {
+                      setAddForm((p) => ({ ...p, isPasaporte: !p.isPasaporte, cedulaORuc: "", pasaporte: "" }));
+                      setCedulaDialogError("");
+                      setPasaporteDialogError("");
+                    }}
+                    className="w-3.5 h-3.5 rounded accent-primary cursor-pointer"
+                  />
+                  <span className="text-xs text-muted-foreground">¿Es Pasaporte?</span>
+                </label>
+              </div>
+
+              {addForm.isPasaporte ? (
+                // Campo pasaporte: alfanumérico, 5–20 caracteres
+                <Input
+                  placeholder="Ej. AB123456"
+                  maxLength={20}
+                  value={addForm.pasaporte}
+                  onKeyDown={(e) => {
+                    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"];
+                    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+                    if (!/^[a-zA-Z0-9]$/.test(e.key)) {
+                      e.preventDefault();
+                      setPasaporteDialogError("Solo se permiten letras y números en el pasaporte");
+                      setTimeout(() => setPasaporteDialogError(""), 2500);
+                    }
+                  }}
+                  onChange={(e) => {
+                    const filtered = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
+                    if (e.target.value !== filtered) setPasaporteDialogError("Solo se permiten letras y números en el pasaporte");
+                    else setPasaporteDialogError("");
+                    setAddForm((p) => ({ ...p, pasaporte: filtered }));
+                  }}
+                />
+              ) : (
+                // Campo cédula/RUC: solo numérico
+                <Input
+                  placeholder="0102030405"
+                  value={addForm.cedulaORuc}
+                  onKeyDown={(e) => {
+                    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"];
+                    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+                    if (!/^\d$/.test(e.key)) {
+                      e.preventDefault();
+                      setCedulaDialogError("Solo se permiten números en la cédula/RUC");
+                      setTimeout(() => setCedulaDialogError(""), 2500);
+                    }
+                  }}
+                  onChange={(e) => {
+                    const filtered = e.target.value.replace(/\D/g, "");
+                    if (e.target.value !== filtered) setCedulaDialogError("Solo se permiten números en la cédula/RUC");
+                    else setCedulaDialogError("");
+                    setAddForm((p) => ({ ...p, cedulaORuc: filtered }));
+                  }}
+                />
+              )}
+
+              {cedulaDialogError && !addForm.isPasaporte && (
+                <p className="text-xs text-destructive">{cedulaDialogError}</p>
+              )}
+              {pasaporteDialogError && addForm.isPasaporte && (
+                <p className="text-xs text-destructive">{pasaporteDialogError}</p>
+              )}
             </div>
+
             <div className="space-y-1.5">
               <Label>Nacionalidad <span className="text-destructive">*</span></Label>
               <Input
@@ -514,7 +681,7 @@ export default function ClientsPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" className="cursor-pointer" onClick={() => setShowAddDialog(false)}>
+            <Button variant="outline" className="cursor-pointer" onClick={() => { setShowAddDialog(false); resetAddForm(); }}>
               Cancelar
             </Button>
             <Button
@@ -553,7 +720,7 @@ export default function ClientsPage() {
                 Paso 1 — Descarga la plantilla
               </p>
               <p className="text-xs text-muted-foreground">
-                Llena el archivo con los datos de tus clientes. La cédula/RUC es opcional.
+                Llena el archivo con los datos de tus clientes. Cédula/RUC (10 o 13 dígitos) y Pasaporte (alfanumérico, 5–20 caracteres) son opcionales pero se validarán si se ingresan.
               </p>
               <Button
                 variant="outline"
@@ -644,6 +811,29 @@ export default function ClientsPage() {
                           <span>{parseStats.invalid.toLocaleString()} filas inválidas omitidas</span>
                         )}
                       </span>
+                    </div>
+                  )}
+
+                  {/* Tarea 4: mostrar errores de validación por fila */}
+                  {parseStats.rowErrors.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {parseStats.rowErrors.length} error{parseStats.rowErrors.length !== 1 ? "es" : ""} de formato detectado{parseStats.rowErrors.length !== 1 ? "s" : ""}
+                        {" "}(esas filas fueron omitidas)
+                      </p>
+                      <div className="rounded-lg border border-destructive/20 bg-destructive/5 max-h-32 overflow-y-auto divide-y divide-destructive/10">
+                        {parseStats.rowErrors.slice(0, 20).map((e, i) => (
+                          <p key={i} className="px-3 py-1.5 text-xs text-destructive">
+                            {e.message}
+                          </p>
+                        ))}
+                        {parseStats.rowErrors.length > 20 && (
+                          <p className="px-3 py-1.5 text-xs text-destructive/70 text-center">
+                            +{parseStats.rowErrors.length - 20} errores más...
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

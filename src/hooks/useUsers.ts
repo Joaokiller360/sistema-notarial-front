@@ -82,6 +82,12 @@ export function useUsers() {
   };
 
   const deleteUser = async (id: string) => {
+    // Tarea 5 & 7: guardia en capa de servicio — la cuenta SUPER_ADMIN no puede eliminarse
+    const target = users?.data.find((u) => u.id === id);
+    if ((target?.roles ?? []).includes("SUPER_ADMIN")) {
+      toast.error("No es posible eliminar la cuenta Super Admin");
+      return;
+    }
     try {
       await usersService.delete(id);
       toast.success("Usuario eliminado");

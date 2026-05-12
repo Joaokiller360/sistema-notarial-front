@@ -10,6 +10,7 @@ import type {
 export interface ClientPayload {
   nombresCompletos: string;
   cedulaORuc?: string;
+  pasaporte?: string;
   nacionalidad: string;
 }
 

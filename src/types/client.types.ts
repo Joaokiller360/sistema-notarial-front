@@ -4,6 +4,7 @@ export interface Client {
   id: string;
   nombresCompletos: string;
   cedulaORuc: string;
+  pasaporte?: string;
   nacionalidad?: string;
   email?: string;
   phone?: string;

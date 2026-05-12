@@ -5,6 +5,16 @@ import { Upload, X, FileText, AlertCircle, ShieldCheck, Loader2 } from "lucide-r
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface FileUploadProps {
   value?: File | null;
@@ -77,7 +87,7 @@ async function validatePDF(file: File, maxBytes: number): Promise<string | null>
   // 5. Magic bytes: first 5 bytes must be %PDF-
   const magic = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
   if (magic !== PDF_SIGNATURE) {
-    return "El archivo no es un PDF legítimo (firma de archivo incorrecta).";
+    return "El archivo no es un PDF legítimo.";
   }
 
   // 6. PDF version byte must be a decimal digit (0x30–0x39)
@@ -149,6 +159,8 @@ export function FileUpload({
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  // Tarea 6: confirmación antes de eliminar el archivo seleccionado
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   const maxBytes = maxSizeMB * 1024 * 1024;
 
@@ -189,123 +201,142 @@ export function FileUpload({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Verified file preview (shown after local validation passes)
-  if (value) {
-    const isUploading = uploadProgress > 0 && uploadProgress < 100;
-
-    return (
-      <div className={cn("rounded-lg border border-border p-4", className)}>
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            {isUploading ? (
-              <Loader2 className="w-5 h-5 text-primary animate-spin" />
-            ) : (
-              <FileText className="w-5 h-5 text-primary" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{value.name}</p>
-            <p className="text-xs text-muted-foreground">{formatSize(value.size)}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isUploading ? (
-              <span className="text-xs text-muted-foreground font-medium">
-                Subiendo a S3... {uploadProgress}%
-              </span>
-            ) : (
-              <>
-                <span className="flex items-center gap-1 text-xs text-[#1D2C49]/70 font-medium">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Verificado
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => {
-                    onChange(null);
-                    setError(null);
-                  }}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-        {isUploading && (
-          <div className="mt-3">
-            <Progress value={uploadProgress} className="h-1.5" />
-          </div>
-        )}
-      </div>
-    );
-  }
+  const isUploading = !!value && uploadProgress > 0 && uploadProgress < 100;
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragging(true);
-        }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => !isValidating && inputRef.current?.click()}
-        className={cn(
-          "relative flex flex-col items-center justify-center gap-3 p-8 rounded-lg border-2 border-dashed transition-all",
-          isValidating
-            ? "border-primary/50 bg-primary/5 cursor-wait"
-            : isDragging
-            ? "border-primary bg-primary/5 cursor-pointer"
-            : "border-border hover:border-primary/50 hover:bg-muted/30 cursor-pointer"
-        )}
-      >
-        {isValidating ? (
-          <>
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-              <Loader2 className="w-5 h-5 text-primary animate-spin" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-medium text-foreground">Verificando seguridad...</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Analizando integridad y contenido del PDF
-              </p>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-              <Upload className="w-5 h-5 text-primary" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-medium text-foreground">Arrastra tu PDF aquí</p>
-              <p className="text-xs text-muted-foreground mt-1">o haz clic para seleccionar</p>
-              <p className="text-xs text-muted-foreground mt-1">PDF · máx. {maxSizeMB} MB</p>
-            </div>
-          </>
-        )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept={accept}
-          className="hidden"
-          onChange={handleChange}
-        />
-      </div>
+    <>
+      {/* Tarea 6: confirmación antes de eliminar el archivo seleccionado */}
+      <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar archivo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que deseas eliminar este archivo? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { onChange(null); setError(null); setShowRemoveConfirm(false); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {error && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-destructive text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          <span>{error}</span>
+      {/* Vista previa del archivo verificado */}
+      {value ? (
+        <div className={cn("rounded-lg border border-border p-4", className)}>
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              {isUploading ? (
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              ) : (
+                <FileText className="w-5 h-5 text-primary" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{value.name}</p>
+              <p className="text-xs text-muted-foreground">{formatSize(value.size)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isUploading ? (
+                <span className="text-xs text-muted-foreground font-medium">
+                  Subiendo a S3... {uploadProgress}%
+                </span>
+              ) : (
+                <>
+                  <span className="flex items-center gap-1 text-xs text-[#1D2C49]/70 font-medium">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Verificado
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    onClick={() => setShowRemoveConfirm(true)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          {isUploading && (
+            <div className="mt-3">
+              <Progress value={uploadProgress} className="h-1.5" />
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Zona de drop vacía */
+        <div className={cn("space-y-2", className)}>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => !isValidating && inputRef.current?.click()}
+            className={cn(
+              "relative flex flex-col items-center justify-center gap-3 p-8 rounded-lg border-2 border-dashed transition-all",
+              isValidating
+                ? "border-primary/50 bg-primary/5 cursor-wait"
+                : isDragging
+                ? "border-primary bg-primary/5 cursor-pointer"
+                : "border-border hover:border-primary/50 hover:bg-muted/30 cursor-pointer"
+            )}
+          >
+            {isValidating ? (
+              <>
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">Verificando seguridad...</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Analizando integridad y contenido del PDF
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-primary" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">Arrastra tu PDF aquí</p>
+                  <p className="text-xs text-muted-foreground mt-1">o haz clic para seleccionar</p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF · máx. {maxSizeMB} MB</p>
+                </div>
+              </>
+            )}
+            <input
+              ref={inputRef}
+              type="file"
+              accept={accept}
+              className="hidden"
+              onChange={handleChange}
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-destructive text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#1D2C49]/50" />
+            Verificación automática de integridad y contenido malicioso
+          </p>
         </div>
       )}
-
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <ShieldCheck className="w-3.5 h-3.5 text-[#1D2C49]/50" />
-        Verificación automática de firma, integridad y contenido malicioso
-      </p>
-    </div>
+    </>
   );
 }

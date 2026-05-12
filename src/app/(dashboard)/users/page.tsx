@@ -58,11 +58,15 @@ const ROLE_LABELS: Record<string, string> = {
 export default function UsersPage() {
   const router = useRouter();
   const { users, isLoading, fetchUsers, deleteUser } = useUsers();
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isNotario, canManageUsers } = usePermissions();
 
-  // NOTARIO cannot act on SUPER_ADMIN users
+  // Toggle/editar: el NOTARIO no puede actuar sobre cuentas SUPER_ADMIN
   const canActOn = (target: User) =>
-    isSuperAdmin() || !target.roles.includes("SUPER_ADMIN");
+    isSuperAdmin() || !(target.roles ?? []).includes("SUPER_ADMIN");
+
+  // Ocultar el botón Eliminar cuando el target es una cuenta SUPER_ADMIN
+  const canDeleteUser = (target: User) =>
+    !(target.roles ?? []).includes("SUPER_ADMIN");
 
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<Role | "">("");
@@ -115,6 +119,13 @@ export default function UsersPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
+    // Tarea 5: guardia frontend — nunca eliminar cuenta SUPER_ADMIN
+    const target = users?.data.find((u) => u.id === deleteId);
+    if ((target?.roles ?? []).includes("SUPER_ADMIN")) {
+      alert("No es posible eliminar la cuenta Super Admin");
+      setDeleteId(null);
+      return;
+    }
     await deleteUser(deleteId);
     setDeleteId(null);
     load();
@@ -178,55 +189,58 @@ export default function UsersPage() {
       key: "actions",
       label: "Acciones",
       className: "text-right",
-      render: (row) => {
-        const allowed = canActOn(row);
-        return (
-          <div className="flex items-center justify-end gap-1">
-            {allowed ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 cursor-pointer"
-                  onClick={() => handleToggleActive(row)}
-                  title={row.isActive ? "Desactivar" : "Activar"}
-                >
-                  {row.isActive
-                    ? <ToggleRight className="w-4 h-4 text-emerald-400" />
-                    : <ToggleLeft className="w-4 h-4" />
-                  }
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 cursor-pointer"
-                  onClick={() => router.push(`/users/${row.id}/edit`)}
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 cursor-pointer text-destructive"
-                  onClick={() => setDeleteId(row.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </>
-            ) : null}
-          </div>
-        );
-      },
+      render: (row) => (
+        <div className="flex items-center justify-end gap-1">
+          {canActOn(row) && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 cursor-pointer"
+                onClick={() => handleToggleActive(row)}
+                title={row.isActive ? "Desactivar" : "Activar"}
+              >
+                {row.isActive
+                  ? <ToggleRight className="w-4 h-4 text-emerald-400" />
+                  : <ToggleLeft className="w-4 h-4" />
+                }
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 cursor-pointer"
+                onClick={() => router.push(`/users/${row.id}/edit`)}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            </>
+          )}
+          {/* Tarea 5 & 7: eliminar oculto para cuentas SUPER_ADMIN */}
+          {canDeleteUser(row) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 cursor-pointer text-destructive"
+              onClick={() => setDeleteId(row.id)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader title="Usuarios" description="Gestión de usuarios y permisos del sistema">
-        <ButtonLink href="/users/new">
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Usuario
-        </ButtonLink>
+        {/* Tarea 7: solo SUPER_ADMIN y NOTARIO pueden agregar usuarios */}
+        {canManageUsers() && (
+          <ButtonLink href="/users/new">
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Usuario
+          </ButtonLink>
+        )}
       </PageHeader>
 
       <div className="flex flex-col sm:flex-row gap-3">

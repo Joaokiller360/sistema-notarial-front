@@ -59,12 +59,16 @@ export default function ArchiveDetailPage() {
       if (mode === "view") {
         window.open(url, "_blank", "noopener,noreferrer");
       } else {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
+        a.href = blobUrl;
         a.download = archive.pdfFileName || "documento.pdf";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
       }
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;

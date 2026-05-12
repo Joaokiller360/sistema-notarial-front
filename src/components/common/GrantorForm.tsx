@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useFieldArray, useFormContext, Controller, useWatch } from "react-hook-form";
 import { Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -46,14 +48,59 @@ interface GrantorRowProps {
 
 function GrantorRow({ fieldName, index, onRemove, errors }: GrantorRowProps) {
   const { control, setValue } = useFormContext();
+  const [cedulaError, setCedulaError] = useState("");
 
   const nombresValue: string = useWatch({ control, name: `${fieldName}.${index}.nombresCompletos` }) ?? "";
   const cedulaValue: string  = useWatch({ control, name: `${fieldName}.${index}.cedulaORuc` }) ?? "";
+  const pasaporteValue: string = useWatch({ control, name: `${fieldName}.${index}.pasaporte` }) ?? "";
+  const isPasaporte: boolean = useWatch({ control, name: `${fieldName}.${index}.isPasaporte` }) ?? false;
 
   const handleClientSelect = (client: Client) => {
     setValue(`${fieldName}.${index}.nombresCompletos`, client.nombresCompletos, { shouldValidate: true });
     setValue(`${fieldName}.${index}.cedulaORuc`,       client.cedulaORuc ?? "",  { shouldValidate: true });
     setValue(`${fieldName}.${index}.nacionalidad`,     client.nacionalidad || DEFAULT_NATIONALITY, { shouldValidate: true });
+  };
+
+  const handleTogglePasaporte = () => {
+    const next = !isPasaporte;
+    setValue(`${fieldName}.${index}.isPasaporte`, next, { shouldValidate: false });
+    // Clear the unused field when switching modes
+    if (next) {
+      setValue(`${fieldName}.${index}.cedulaORuc`, "", { shouldValidate: false });
+      setCedulaError("");
+    } else {
+      setValue(`${fieldName}.${index}.pasaporte`, "", { shouldValidate: false });
+    }
+  };
+
+  // Tarea 1: bloquear caracteres no numéricos en cédula/RUC
+  const handleCedulaKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter", "Home", "End"];
+    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      setCedulaError("Solo se permiten números en la cédula/RUC");
+      setTimeout(() => setCedulaError(""), 2500);
+    }
+  };
+
+  const handleCedulaChange = (val: string) => {
+    const filtered = val.replace(/\D/g, "");
+    if (val !== filtered) setCedulaError("Solo se permiten números en la cédula/RUC");
+    else setCedulaError("");
+    setValue(`${fieldName}.${index}.cedulaORuc`, filtered, { shouldValidate: true });
+  };
+
+  // Tarea 3: bloquear caracteres especiales en pasaporte (solo alfanumérico)
+  const handlePasaporteKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter", "Home", "End"];
+    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!/^[a-zA-Z0-9]$/.test(e.key)) e.preventDefault();
+  };
+
+  const handlePasaporteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const filtered = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
+    setValue(`${fieldName}.${index}.pasaporte`, filtered, { shouldValidate: true });
   };
 
   return (
@@ -87,16 +134,51 @@ function GrantorRow({ fieldName, index, onRemove, errors }: GrantorRowProps) {
           )}
         </div>
 
+        {/* Tarea 2 & 3: checkbox ¿Es Pasaporte? + campo condicional */}
         <div className="space-y-1.5">
-          <Label className="text-xs">Cédula / RUC</Label>
-          <ClientSearchInput
-            value={cedulaValue}
-            onChange={(val) => setValue(`${fieldName}.${index}.cedulaORuc`, val, { shouldValidate: true })}
-            onSelect={handleClientSelect}
-            placeholder="Ej: 0912345678"
-          />
-          {errors?.cedulaORuc?.message && (
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">{isPasaporte ? "Pasaporte" : "Cédula / RUC"}</Label>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isPasaporte}
+                onChange={handleTogglePasaporte}
+                className="w-3.5 h-3.5 rounded accent-primary cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground">¿Es Pasaporte?</span>
+            </label>
+          </div>
+
+          {isPasaporte ? (
+            // Campo pasaporte: alfanumérico, 5–20 caracteres
+            <Input
+              value={pasaporteValue}
+              onChange={handlePasaporteChange}
+              onKeyDown={handlePasaporteKeyDown}
+              placeholder="Ej: AB123456"
+              className="h-8 text-sm"
+              maxLength={20}
+            />
+          ) : (
+            // Campo cédula/RUC: solo numérico
+            <ClientSearchInput
+              value={cedulaValue}
+              onChange={handleCedulaChange}
+              onKeyDown={handleCedulaKeyDown}
+              onSelect={handleClientSelect}
+              placeholder="Ej: 0912345678"
+            />
+          )}
+
+          {/* Errores de validación inline */}
+          {cedulaError && !isPasaporte && (
+            <p className="text-xs text-destructive">{cedulaError}</p>
+          )}
+          {!cedulaError && !isPasaporte && errors?.cedulaORuc?.message && (
             <p className="text-xs text-destructive">{errors.cedulaORuc.message}</p>
+          )}
+          {isPasaporte && errors?.pasaporte?.message && (
+            <p className="text-xs text-destructive">{errors.pasaporte.message}</p>
           )}
         </div>
 
@@ -156,7 +238,13 @@ export function GrantorForm({ fieldName, title, icon }: GrantorFormProps) {
           className="cursor-pointer"
           variant="default"
           size="sm"
-          onClick={() => append({ nombresCompletos: "", cedulaORuc: "", nacionalidad: DEFAULT_NATIONALITY })}
+          onClick={() => append({
+            nombresCompletos: "",
+            cedulaORuc: "",
+            isPasaporte: false,
+            pasaporte: "",
+            nacionalidad: DEFAULT_NATIONALITY,
+          })}
         >
           <Plus className="w-3.5 h-3.5 mr-1.5" />
           Agregar
