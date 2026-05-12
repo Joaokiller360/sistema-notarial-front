@@ -104,12 +104,20 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Noticias */}
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Newspaper className="w-5 h-5 text-primary" />
-            Noticias
-          </h3>
-          <div className="flex flex-col items-center justify-center py-10 text-center">
+        <div className="rounded-lg border border-border bg-card p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Newspaper className="w-5 h-5 text-primary" />
+              Noticias
+            </h3>
+            <Link
+              href="/news"
+              className="text-xs text-primary hover:underline font-medium"
+            >
+              Ver Noticias →
+            </Link>
+          </div>
+          <div className="flex flex-col items-center justify-center py-10 text-center flex-1">
             <Newspaper className="w-10 h-10 text-muted-foreground/25 mb-3" />
             <p className="text-sm text-muted-foreground">No hay noticias disponibles aún.</p>
             <p className="text-xs text-muted-foreground/60 mt-1">

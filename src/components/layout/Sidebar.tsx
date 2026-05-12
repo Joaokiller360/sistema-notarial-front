@@ -13,6 +13,7 @@ import {
   Building2,
   ScrollText,
   UserRound,
+  Newspaper,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store";
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Archivos", href: "/archives", icon: FolderArchive },
   { label: "Clientes", href: "/clients", icon: UserRound },
+  { label: "Noticias", href: "/news", icon: Newspaper },
   { label: "Usuarios", href: "/users", icon: Users, roles: ["SUPER_ADMIN", "NOTARIO"] },
   { label: "Logs", href: "/logs", icon: ScrollText, roles: ["SUPER_ADMIN"] },
 ];

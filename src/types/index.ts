@@ -3,6 +3,7 @@ export * from "./archive.types";
 export * from "./user.types";
 export * from "./log.types";
 export * from "./client.types";
+export * from "./news.types";
 
 export interface ApiError {
   message: string;
