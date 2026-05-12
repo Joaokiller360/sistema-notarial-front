@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,19 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PageLoader } from "@/components/common/LoadingSpinner";
 import { CharCounter } from "@/components/common/CharCounter";
 import { useUsers, usePermissions } from "@/hooks";
-import { rolesService, type RoleItem } from "@/services";
-
-const ROLE_TYPE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: "Super Administrador",
-  NOTARIO: "Notario",
-  MATRIZADOR: "Matrizador",
-  ARCHIVADOR: "Archivador",
-};
 
 const NOMBRE_MAX = 250;
 
@@ -43,8 +41,6 @@ const userSchema = z.object({
     .min(2, "Apellido requerido")
     .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
   email: z.string().email("Correo electrónico inválido"),
-  roleId: z.string().min(1, "Selecciona un rol"),
-  isActive: z.boolean(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -52,24 +48,23 @@ type UserFormData = z.infer<typeof userSchema>;
 export default function EditUserPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, isLoading, fetchUser, updateUser, isSubmitting } = useUsers();
-  const { isSuperAdmin } = usePermissions();
-  const [roles, setRoles] = useState<RoleItem[]>([]);
+  const { user: targetUser, isLoading, fetchUser, updateUser, isSubmitting } = useUsers();
+  const { isSuperAdmin, user: me } = usePermissions();
 
-  useEffect(() => {
-    rolesService.getAll().then(setRoles).catch(() => { });
-  }, []);
+  const isSelf = id === me?.id;
+  const isTargetSuperAdmin = targetUser?.roles?.includes("SUPER_ADMIN") ?? false;
+  // Show disabled status indicator only when super_admin edits their own profile
+  const showDisabledStatus = isSuperAdmin() && isSelf;
 
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
     reset,
     formState: { errors, isSubmitted, isValid },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: { isActive: true, roleId: "", firstName: "", lastName: "" },
+    defaultValues: { firstName: "", lastName: "", email: "" },
   });
 
   const firstNameValue = watch("firstName") || "";
@@ -80,34 +75,27 @@ export default function EditUserPage() {
   }, [id, fetchUser]);
 
   useEffect(() => {
-    if (user && roles.length > 0) {
-      const userRoleType = user.roles?.[0];
-      const matchedRole = roles.find((r) => r.type === userRoleType);
-
+    if (targetUser) {
       reset({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        roleId: matchedRole?.id || "",
-        isActive: user.isActive,
+        firstName: targetUser.firstName,
+        lastName: targetUser.lastName,
+        email: targetUser.email,
       });
     }
-  }, [user, roles, reset]);
+  }, [targetUser, reset]);
 
   const onSubmit = async (data: UserFormData) => {
     await updateUser(id, {
       email: data.email,
       firstName: data.firstName,
       lastName: data.lastName,
-      roleIds: [data.roleId],
-      isActive: data.isActive,
     });
     router.push("/users");
   };
 
   if (isLoading) return <PageLoader />;
 
-  if (!isSuperAdmin() && user?.roles.includes("SUPER_ADMIN")) {
+  if (!isSuperAdmin() && isTargetSuperAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <p className="text-muted-foreground">No tienes permiso para editar este usuario.</p>
@@ -124,7 +112,7 @@ export default function EditUserPage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <PageHeader
-        title={user ? `Editar: ${user.firstName} ${user.lastName}` : "Editar Usuario"}
+        title={targetUser ? `Editar: ${targetUser.firstName} ${targetUser.lastName}` : "Editar Usuario"}
         description="Modifica los datos del usuario"
       >
         <ButtonLink href="/users" variant="outline" size="sm">
@@ -198,45 +186,29 @@ export default function EditUserPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Rol</Label>
-                <Select
-                  value={watch("roleId")}
-                  onValueChange={(v) => setValue("roleId", v ?? "")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un rol" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {ROLE_TYPE_LABELS[role.type] || role.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.roleId && (
-                  <p className="text-xs text-destructive">{errors.roleId.message}</p>
-                )}
-              </div>
-
+            {showDisabledStatus && (
               <div className="space-y-1.5">
                 <Label>Estado</Label>
-                <Select
-                  value={watch("isActive") ? "true" : "false"}
-                  onValueChange={(v) => setValue("isActive", v === "true")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Activo</SelectItem>
-                    <SelectItem value="false">Inactivo</SelectItem>
-                  </SelectContent>
-                </Select>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger render={<div className="cursor-not-allowed" />}>
+                      <Select value={targetUser?.isActive ? "true" : "false"} disabled>
+                        <SelectTrigger className="opacity-60 pointer-events-none">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">Activo</SelectItem>
+                          <SelectItem value="false">Inactivo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      No puedes desactivar tu propia cuenta
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
