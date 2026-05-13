@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Building2, Settings, Shield, AlertTriangle, Save } from "lucide-react";
+import { Building2, Settings, Shield, AlertTriangle, Save, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,21 +21,45 @@ const fileConfigSchema = z.object({
     .int("Debe ser un número entero")
     .min(1, "El mínimo es 1 MB")
     .max(500, "El máximo permitido es 500 MB"),
+  maxPdfImages: z
+    .number()
+    .int("Debe ser un número entero")
+    .min(1, "El mínimo es 1 imagen")
+    .max(5000, "El máximo permitido es 5000 imágenes"),
+});
+
+const versionSchema = z.object({
+  systemVersion: z
+    .string()
+    .min(1, "La versión no puede estar vacía")
+    .max(30, "Máximo 30 caracteres")
+    .regex(/^[a-zA-Z0-9.\-_]+$/, "Solo letras, números, puntos, guiones y guiones bajos"),
 });
 
 type FileConfigFormData = z.infer<typeof fileConfigSchema>;
+type VersionFormData = z.infer<typeof versionSchema>;
 
 export default function SystemSettingsPage() {
-  const { config, isLoading, isSubmitting, fetchConfig, updateConfig } = useSystemSettings();
+  const { config, isLoading, fetchConfig, updateConfig } = useSystemSettings();
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isDirty },
+    formState: { errors, isDirty, isSubmitting: isSubmittingFiles },
   } = useForm<FileConfigFormData>({
     resolver: zodResolver(fileConfigSchema),
-    defaultValues: { maxPdfSizeMb: 10 },
+    defaultValues: { maxPdfSizeMb: 10, maxPdfImages: 20 },
+  });
+
+  const {
+    register: registerVersion,
+    handleSubmit: handleSubmitVersion,
+    reset: resetVersion,
+    formState: { errors: versionErrors, isDirty: isVersionDirty, isSubmitting: isSubmittingVersion },
+  } = useForm<VersionFormData>({
+    resolver: zodResolver(versionSchema),
+    defaultValues: { systemVersion: "1.0.0" },
   });
 
   useEffect(() => {
@@ -44,14 +68,24 @@ export default function SystemSettingsPage() {
 
   useEffect(() => {
     if (config) {
-      reset({ maxPdfSizeMb: config.maxPdfSizeMb });
+      reset({ maxPdfSizeMb: config.maxPdfSizeMb, maxPdfImages: config.maxPdfImages });
+      resetVersion({ systemVersion: config.systemVersion ?? "1.0.0" });
     }
-  }, [config, reset]);
+  }, [config, reset, resetVersion]);
 
   const onSubmitFileConfig = async (data: FileConfigFormData) => {
     try {
-      await updateConfig({ maxPdfSizeMb: data.maxPdfSizeMb });
-      reset({ maxPdfSizeMb: data.maxPdfSizeMb });
+      await updateConfig({ maxPdfSizeMb: data.maxPdfSizeMb, maxPdfImages: data.maxPdfImages });
+      reset({ maxPdfSizeMb: data.maxPdfSizeMb, maxPdfImages: data.maxPdfImages });
+    } catch {
+      // toast already shown by the hook
+    }
+  };
+
+  const onSubmitVersion = async (data: VersionFormData) => {
+    try {
+      await updateConfig({ systemVersion: data.systemVersion });
+      resetVersion({ systemVersion: data.systemVersion });
     } catch {
       // toast already shown by the hook
     }
@@ -132,12 +166,30 @@ export default function SystemSettingsPage() {
                   </p>
                 </div>
 
+                <div className="space-y-1.5">
+                  <Label htmlFor="maxPdfImages">Máximo de imágenes por PDF generado</Label>
+                  <Input
+                    id="maxPdfImages"
+                    type="number"
+                    min={1}
+                    max={5000}
+                    disabled={isLoading}
+                    {...register("maxPdfImages", { valueAsNumber: true })}
+                  />
+                  {errors.maxPdfImages && (
+                    <p className="text-xs text-destructive">{errors.maxPdfImages.message}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Límite de imágenes al generar un PDF desde fotos (máx. 5000).
+                  </p>
+                </div>
+
                 <Button
                   type="submit"
                   className="text-primary-foreground cursor-pointer"
-                  disabled={isLoading || isSubmitting || !isDirty}
+                  disabled={isLoading || isSubmittingFiles || !isDirty}
                 >
-                  {isSubmitting ? (
+                  {isSubmittingFiles ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                       Guardando...
@@ -146,6 +198,54 @@ export default function SystemSettingsPage() {
                     <span className="flex items-center gap-2">
                       <Save className="w-4 h-4" />
                       Guardar Configuración
+                    </span>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Tag className="w-4 h-4 text-primary" />
+                Versión del Sistema
+              </CardTitle>
+              <CardDescription>
+                Etiqueta de versión visible en el footer de la aplicación.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmitVersion(onSubmitVersion)} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="systemVersion">Versión actual</Label>
+                  <Input
+                    id="systemVersion"
+                    placeholder="Ej: 1.0.0, v2.3.1-beta"
+                    disabled={isLoading}
+                    {...registerVersion("systemVersion")}
+                  />
+                  {versionErrors.systemVersion && (
+                    <p className="text-xs text-destructive">{versionErrors.systemVersion.message}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Se muestra en el footer del dashboard para todos los usuarios.
+                  </p>
+                </div>
+                <Button
+                  type="submit"
+                  className="text-primary-foreground cursor-pointer"
+                  disabled={isLoading || isSubmittingVersion || !isVersionDirty}
+                >
+                  {isSubmittingVersion ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      Guardando...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Save className="w-4 h-4" />
+                      Guardar Versión
                     </span>
                   )}
                 </Button>

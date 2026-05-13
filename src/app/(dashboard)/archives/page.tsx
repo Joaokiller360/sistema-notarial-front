@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, Search, Filter, Eye, Pencil, Trash2,
-  FolderArchive, FileCheck2, ClipboardList, BookOpen, FolderOpen, LayoutList,
+  FolderArchive, FileCheck2, ClipboardList, BookOpen, FolderOpen, LayoutList, AlertCircle, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -75,7 +75,7 @@ const TYPE_COLORS: Record<ArchiveType, string> = {
 
 export default function ArchivesPage() {
   const router = useRouter();
-  const { archives, isLoading, fetchArchives, fetchAllArchives, deleteArchive, clearArchives } = useArchives();
+  const { archives, isLoading, isError, fetchArchives, fetchAllArchives, deleteArchive, clearArchives } = useArchives();
   const { canEditArchive, canDeleteArchive, canCreateArchive } = usePermissions();
 
   const [activeType, setActiveType] = useState<ArchiveType | "">("");
@@ -368,6 +368,22 @@ export default function ArchivesPage() {
       </div>
 
       <div className="space-y-3">
+        {!isLoading && isError ? (
+          <div className="bg-card rounded-lg border border-destructive/30 flex flex-col items-center justify-center gap-3 py-16">
+            <AlertCircle className="w-10 h-10 text-destructive/60" />
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">Error al cargar los archivos</p>
+              <p className="text-xs text-muted-foreground mt-1">El servidor no pudo procesar la solicitud</p>
+            </div>
+            <button
+              onClick={load}
+              className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Reintentar
+            </button>
+          </div>
+        ) : (
         <DataTable
           columns={columns}
           data={displayData}
@@ -380,6 +396,7 @@ export default function ArchivesPage() {
               : "Crea tu primer archivo notarial para comenzar."
           }
         />
+        )}
         {paginationInfo && (
           <Pagination
             page={paginationInfo.page}

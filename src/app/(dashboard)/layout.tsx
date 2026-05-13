@@ -1,7 +1,7 @@
 "use client";
 
 import { AuthGuard } from "@/guards";
-import { Sidebar, Navbar, Breadcrumbs, MobileSidebar } from "@/components/layout";
+import { Sidebar, Navbar, Breadcrumbs, MobileSidebar, Footer } from "@/components/layout";
 import { useTokenRefresh } from "@/hooks";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -20,6 +20,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto scrollbar-thin bg-muted">
           <div className="p-6">{children}</div>
         </main>
+        <Footer />
       </div>
     </div>
   );

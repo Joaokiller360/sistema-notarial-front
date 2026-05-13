@@ -10,7 +10,10 @@ import type {
 
 export const archivesService = {
   getAll: async (filters: ArchiveFilters = {}): Promise<PaginatedArchives> => {
-    const response = await apiClient.get("/archives", { params: filters });
+    const params = Object.fromEntries(
+      Object.entries(filters).filter(([, v]) => v !== undefined && v !== null && v !== "")
+    );
+    const response = await apiClient.get("/archives", { params });
     const body = response.data;
 
     if (body?.data && Array.isArray(body.data?.data)) {
@@ -104,6 +107,16 @@ export const archivesService = {
       });
     }
     return res.blob();
+  },
+
+  generatePdf: async (
+    id: string,
+    files: File[],
+    onProgress?: (percent: number) => void
+  ): Promise<Archive> => {
+    const { generatePdfFromImages } = await import("@/utils/generatePdfFromImages");
+    const pdfFile = await generatePdfFromImages(files);
+    return archivesService.uploadPdf(id, pdfFile, onProgress);
   },
 
   delete: async (id: string): Promise<void> => {

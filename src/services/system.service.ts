@@ -3,6 +3,8 @@ import type { BackendApiResponse } from "@/types";
 
 export interface SystemConfig {
   maxPdfSizeMb: number;
+  maxPdfImages: number;
+  systemVersion: string;
 }
 
 export const systemService = {

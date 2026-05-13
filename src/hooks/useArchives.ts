@@ -41,11 +41,13 @@ export function useArchives() {
   const [archives, setArchives] = useState<PaginatedArchives | null>(null);
   const [archive, setArchive] = useState<Archive | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pdfUploadProgress, setPdfUploadProgress] = useState(0);
 
   const fetchArchives = useCallback(async (filters: ArchiveFilters = {}) => {
     setIsLoading(true);
+    setIsError(false);
     setArchives(null);
     try {
       const data = await archivesService.getAll(filters);
@@ -55,6 +57,7 @@ export function useArchives() {
       const status = axiosErr?.response?.status;
       const msg = axiosErr?.response?.data?.message;
       console.error("[fetchArchives] error", status, msg, err);
+      setIsError(true);
       toast.error(
         msg
           ? `Error ${status ?? ""}: ${Array.isArray(msg) ? msg.join(" · ") : msg}`
@@ -70,6 +73,7 @@ export function useArchives() {
   const fetchAllArchives = useCallback(
     async (filters: Omit<ArchiveFilters, "type"> = {}) => {
       setIsLoading(true);
+      setIsError(false);
       setArchives(null);
       try {
         const BATCH = 50;
@@ -103,6 +107,7 @@ export function useArchives() {
         const status = axiosErr?.response?.status;
         const msg = axiosErr?.response?.data?.message;
         console.error("[fetchAllArchives] error", status, msg);
+        setIsError(true);
         toast.error(
           msg
             ? `Error ${status ?? ""}: ${Array.isArray(msg) ? msg.join(" · ") : msg}`
@@ -219,12 +224,13 @@ export function useArchives() {
     }
   };
 
-  const clearArchives = useCallback(() => setArchives(null), []);
+  const clearArchives = useCallback(() => { setArchives(null); setIsError(false); }, []);
 
   return {
     archives,
     archive,
     isLoading,
+    isError,
     isSubmitting,
     pdfUploadProgress,
     fetchArchives,
