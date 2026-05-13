@@ -26,7 +26,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PageLoader } from "@/components/common/LoadingSpinner";
-import { CharCounter } from "@/components/common/CharCounter";
 import { useUsers, usePermissions } from "@/hooks";
 import { rolesService, type RoleItem } from "@/services";
 
@@ -37,18 +36,35 @@ const ROLE_TYPE_LABELS: Record<string, string> = {
   ARCHIVADOR: "Archivador",
 };
 
-const NOMBRE_MAX = 250;
+const NOMBRE_MAX = 60;
+
+const forbiddenChars = /[<>"';&#/\\]/;
+const onlyLetters    = /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s'-]+$/;
+
+const userNameField = z
+  .string()
+  .min(2, { message: "Mínimo 2 caracteres" })
+  .max(NOMBRE_MAX, { message: `Máximo ${NOMBRE_MAX} caracteres` })
+  .transform((val) => val.replace(/\s+/g, " ").trim())
+  .refine((val) => !forbiddenChars.test(val), {
+    message: "No se permiten caracteres especiales ni etiquetas HTML",
+  })
+  .refine((val) => !/<[^>]*>/g.test(val), {
+    message: "No se permiten etiquetas HTML",
+  })
+  .refine((val) => onlyLetters.test(val), {
+    message: "Solo se permiten letras, tildes, espacios y guiones",
+  });
 
 const userSchema = z.object({
-  firstName: z
+  firstName: userNameField,
+  lastName:  userNameField,
+  email: z
     .string()
-    .min(2, "Nombre requerido")
-    .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
-  lastName: z
-    .string()
-    .min(2, "Apellido requerido")
-    .max(NOMBRE_MAX, "No puede superar los 250 caracteres"),
-  email: z.string().email("Correo electrónico inválido"),
+    .email("Correo electrónico inválido")
+    .refine((val) => !/[<>]/.test(val), {
+      message: "El correo no puede contener caracteres HTML",
+    }),
   roleId: z.string().optional(),
 });
 
@@ -80,6 +96,48 @@ export default function EditUserPage() {
 
   const firstNameValue = watch("firstName") || "";
   const lastNameValue = watch("lastName") || "";
+
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const blocked = ["<", ">", '"', "'", ";", "&", "#", "/", "\\"];
+    if (blocked.includes(e.key)) e.preventDefault();
+  };
+
+  const handleEmailKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "<" || e.key === ">") e.preventDefault();
+  };
+
+  const handleEmailPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text");
+    const clean = pasted
+      .replace(/<[^>]*>/g, "")
+      .replace(/[<>]/g, "")
+      .trim();
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end   = el.selectionEnd   ?? 0;
+    const newVal = el.value.slice(0, start) + clean + el.value.slice(end);
+    setValue("email", newVal, { shouldValidate: true });
+  };
+
+  const makePasteHandler =
+    (field: "firstName" | "lastName") =>
+    (e: React.ClipboardEvent<HTMLInputElement>) => {
+      e.preventDefault();
+      const pasted = e.clipboardData.getData("text");
+      const clean = pasted
+        .replace(/<[^>]*>/g, "")
+        .replace(/[<>"';&#/\\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, NOMBRE_MAX);
+      const el = e.currentTarget;
+      const start = el.selectionStart ?? 0;
+      const end   = el.selectionEnd   ?? 0;
+      const newVal = (el.value.slice(0, start) + clean + el.value.slice(end))
+        .slice(0, NOMBRE_MAX);
+      setValue(field, newVal, { shouldValidate: true });
+    };
 
   useEffect(() => {
     if (id) fetchUser(id);
@@ -168,29 +226,33 @@ export default function EditUserPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="firstName">Nombre</Label>
-                  <CharCounter current={firstNameValue.length} max={NOMBRE_MAX} warnAt={20} />
-                </div>
+                <Label htmlFor="firstName">Nombre</Label>
                 <Input
                   id="firstName"
                   maxLength={NOMBRE_MAX}
+                  onKeyDown={handleNameKeyDown}
+                  onPaste={makePasteHandler("firstName")}
                   {...register("firstName")}
                 />
+                <p className="text-xs text-muted-foreground text-right mt-1">
+                  {firstNameValue.length} / {NOMBRE_MAX}
+                </p>
                 {errors.firstName && (
                   <p className="text-xs text-destructive">{errors.firstName.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="lastName">Apellido</Label>
-                  <CharCounter current={lastNameValue.length} max={NOMBRE_MAX} warnAt={20} />
-                </div>
+                <Label htmlFor="lastName">Apellido</Label>
                 <Input
                   id="lastName"
                   maxLength={NOMBRE_MAX}
+                  onKeyDown={handleNameKeyDown}
+                  onPaste={makePasteHandler("lastName")}
                   {...register("lastName")}
                 />
+                <p className="text-xs text-muted-foreground text-right mt-1">
+                  {lastNameValue.length} / {NOMBRE_MAX}
+                </p>
                 {errors.lastName && (
                   <p className="text-xs text-destructive">{errors.lastName.message}</p>
                 )}
@@ -199,7 +261,13 @@ export default function EditUserPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="email">Correo Electrónico</Label>
-              <Input id="email" type="email" {...register("email")} />
+              <Input
+                id="email"
+                type="email"
+                onKeyDown={handleEmailKeyDown}
+                onPaste={handleEmailPaste}
+                {...register("email")}
+              />
               {errors.email && (
                 <p className="text-xs text-destructive">{errors.email.message}</p>
               )}

@@ -270,6 +270,33 @@ function NewArchiveForm() {
     if (!OBS_REGEX.test(e.key)) e.preventDefault();
   };
 
+  const handleCodePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text");
+    const clean = pasted.replace(/[^a-zA-Z0-9]/g, "").slice(0, 17);
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end   = el.selectionEnd   ?? 0;
+    const newVal = (el.value.slice(0, start) + clean + el.value.slice(end)).slice(0, 17);
+    setValue("code", newVal, { shouldValidate: true });
+  };
+
+  const handleObsPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text");
+    const clean = pasted
+      .replace(/<[^>]*>/g, "")
+      .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, OBSERVATIONS_MAX);
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end   = el.selectionEnd   ?? 0;
+    const newVal = (el.value.slice(0, start) + clean + el.value.slice(end)).slice(0, OBSERVATIONS_MAX);
+    setValue("observations", newVal, { shouldValidate: true });
+  };
+
   const onSubmit = async (data: ArchiveFormData) => {
     // Manual validation for document mode
     if (pdfMode === "upload") {
@@ -433,6 +460,7 @@ function NewArchiveForm() {
                     className="font-mono"
                     maxLength={17}
                     onKeyDown={handleCodeKeyDown}
+                    onPaste={handleCodePaste}
                     {...register("code")}
                   />
                   {errors.code && (
@@ -456,6 +484,7 @@ function NewArchiveForm() {
                     className="resize-none"
                     maxLength={OBSERVATIONS_MAX}
                     onKeyDown={handleObsKeyDown}
+                    onPaste={handleObsPaste}
                     {...register("observations")}
                   />
                   {errors.observations && (

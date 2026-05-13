@@ -13,6 +13,8 @@ import type { Client } from "@/types";
 const DEFAULT_NATIONALITY = "Ecuador";
 
 const NOMBRE_MAX = 250;
+const NOMBRE_FORBIDDEN     = /[<>"';&#/\\]/;
+const NOMBRE_FORBIDDEN_ALL = /[<>"';&#/\\]/g;
 
 interface GrantorRowProps {
   fieldName: "grantors" | "beneficiaries";
@@ -33,6 +35,28 @@ function GrantorRow({ fieldName, index, onRemove, errors }: GrantorRowProps) {
     useWatch({ control, name: `${fieldName}.${index}.pasaporte` }) ?? "";
   const isPasaporte: boolean =
     useWatch({ control, name: `${fieldName}.${index}.isPasaporte` }) ?? false;
+
+  const handleNombreKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const control = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab"];
+    if (control.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (NOMBRE_FORBIDDEN.test(e.key)) e.preventDefault();
+  };
+
+  const handleNombrePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text");
+    const clean = pasted
+      .replace(/<[^>]*>/g, "")
+      .replace(NOMBRE_FORBIDDEN_ALL, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, NOMBRE_MAX);
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end   = el.selectionEnd   ?? 0;
+    const newVal = (el.value.slice(0, start) + clean + el.value.slice(end)).slice(0, NOMBRE_MAX);
+    setValue(`${fieldName}.${index}.nombresCompletos`, newVal, { shouldValidate: true });
+  };
 
   const handleClientSelect = (client: Client) => {
     setValue(`${fieldName}.${index}.nombresCompletos`, client.nombresCompletos, {
@@ -116,11 +140,16 @@ function GrantorRow({ fieldName, index, onRemove, errors }: GrantorRowProps) {
           <ClientSearchInput
             value={nombresValue}
             onChange={(val) => {
-              const limited = val.slice(0, NOMBRE_MAX);
-              setValue(`${fieldName}.${index}.nombresCompletos`, limited, {
+              const filtered = val
+                .replace(/<[^>]*>/g, "")
+                .replace(NOMBRE_FORBIDDEN_ALL, "")
+                .slice(0, NOMBRE_MAX);
+              setValue(`${fieldName}.${index}.nombresCompletos`, filtered, {
                 shouldValidate: true,
               });
             }}
+            onKeyDown={handleNombreKeyDown}
+            onPaste={handleNombrePaste}
             onSelect={handleClientSelect}
             placeholder="Ej: Juan Carlos Pérez"
           />

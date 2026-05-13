@@ -25,11 +25,13 @@ const profileSchema = z.object({
     .string()
     .min(1, "El nombre es obligatorio")
     .max(NAME_MAX, `No puede superar los ${NAME_MAX} caracteres`)
+    .trim()
     .regex(NAME_REGEX, "El nombre solo puede contener letras"),
   lastName: z
     .string()
     .min(1, "El apellido es obligatorio")
     .max(NAME_MAX, `No puede superar los ${NAME_MAX} caracteres`)
+    .trim()
     .regex(NAME_REGEX, "El apellido solo puede contener letras"),
 });
 
@@ -51,6 +53,7 @@ export default function ProfilePage() {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting, isDirty, isValid, isSubmitted },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -80,12 +83,30 @@ export default function ProfilePage() {
     }
   }, [user, reset, validateEmail]);
 
-  // Block numbers, symbols and special characters — allow only letters, spaces and accented chars
   const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const control = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab"];
     if (control.includes(e.key) || e.ctrlKey || e.metaKey) return;
     if (!NAME_REGEX.test(e.key)) e.preventDefault();
   };
+
+  const makeNamePasteHandler =
+    (field: "firstName" | "lastName") =>
+    (e: React.ClipboardEvent<HTMLInputElement>) => {
+      e.preventDefault();
+      const pasted = e.clipboardData.getData("text");
+      const clean = pasted
+        .replace(/<[^>]*>/g, "")
+        .replace(/[<>"';&#/\\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, NAME_MAX);
+      const el = e.currentTarget;
+      const start = el.selectionStart ?? 0;
+      const end   = el.selectionEnd   ?? 0;
+      const newVal = (el.value.slice(0, start) + clean + el.value.slice(end))
+        .slice(0, NAME_MAX);
+      setValue(field, newVal, { shouldValidate: true });
+    };
 
   const onSubmit = async (data: ProfileFormData) => {
     if (!validateEmail(user?.email)) return;
@@ -158,6 +179,7 @@ export default function ProfilePage() {
                     placeholder="Tu nombre"
                     maxLength={NAME_MAX}
                     onKeyDown={handleNameKeyDown}
+                    onPaste={makeNamePasteHandler("firstName")}
                     {...register("firstName")}
                   />
                   {errors.firstName && (
@@ -176,6 +198,7 @@ export default function ProfilePage() {
                     placeholder="Tu apellido"
                     maxLength={NAME_MAX}
                     onKeyDown={handleNameKeyDown}
+                    onPaste={makeNamePasteHandler("lastName")}
                     {...register("lastName")}
                   />
                   {errors.lastName && (

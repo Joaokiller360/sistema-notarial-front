@@ -56,6 +56,7 @@ export default function SystemSettingsPage() {
     register: registerVersion,
     handleSubmit: handleSubmitVersion,
     reset: resetVersion,
+    setValue: setVersionValue,
     formState: { errors: versionErrors, isDirty: isVersionDirty, isSubmitting: isSubmittingVersion },
   } = useForm<VersionFormData>({
     resolver: zodResolver(versionSchema),
@@ -80,6 +81,23 @@ export default function SystemSettingsPage() {
     } catch {
       // toast already shown by the hook
     }
+  };
+
+  const handleVersionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const control = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab"];
+    if (control.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!/^[a-zA-Z0-9.\-_]$/.test(e.key)) e.preventDefault();
+  };
+
+  const handleVersionPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text");
+    const clean = pasted.replace(/[^a-zA-Z0-9.\-_]/g, "").slice(0, 30);
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end   = el.selectionEnd   ?? 0;
+    const newVal = (el.value.slice(0, start) + clean + el.value.slice(end)).slice(0, 30);
+    setVersionValue("systemVersion", newVal, { shouldValidate: true });
   };
 
   const onSubmitVersion = async (data: VersionFormData) => {
@@ -222,7 +240,10 @@ export default function SystemSettingsPage() {
                   <Input
                     id="systemVersion"
                     placeholder="Ej: 1.0.0, v2.3.1-beta"
+                    maxLength={30}
                     disabled={isLoading}
+                    onKeyDown={handleVersionKeyDown}
+                    onPaste={handleVersionPaste}
                     {...registerVersion("systemVersion")}
                   />
                   {versionErrors.systemVersion && (
