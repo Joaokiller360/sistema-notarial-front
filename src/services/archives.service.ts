@@ -91,6 +91,21 @@ export const archivesService = {
     return url;
   },
 
+  downloadPdf: async (key: string): Promise<Blob> => {
+    const { tokenUtils } = await import("@/utils/token");
+    const token = tokenUtils.getAccessToken();
+    const res = await fetch(`/api/download-pdf?key=${encodeURIComponent(key)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw Object.assign(new Error(json.error ?? "Error al descargar"), {
+        response: { status: res.status, data: { message: json.error } },
+      });
+    }
+    return res.blob();
+  },
+
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/archives/${id}`, { data: { confirmar_eliminacion: true } });
   },

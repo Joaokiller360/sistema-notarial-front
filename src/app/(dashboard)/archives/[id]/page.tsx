@@ -55,12 +55,11 @@ export default function ArchiveDetailPage() {
     if (!archive?.pdfUrl) return;
     setPdfLoading(mode);
     try {
-      const url = await archivesService.getPdfUrl(archive.pdfUrl);
       if (mode === "view") {
+        const url = await archivesService.getPdfUrl(archive.pdfUrl);
         window.open(url, "_blank", "noopener,noreferrer");
       } else {
-        const res = await fetch(url);
-        const blob = await res.blob();
+        const blob = await archivesService.downloadPdf(archive.pdfUrl);
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = blobUrl;
@@ -68,7 +67,7 @@ export default function ArchiveDetailPage() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
       }
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
