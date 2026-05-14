@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { Save, User, Eye, EyeOff, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
+import { toTitleCase } from "@/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
@@ -39,7 +40,7 @@ const userNameField = z
   .string()
   .min(2, { message: "Mínimo 2 caracteres" })
   .max(NOMBRE_MAX, { message: `Máximo ${NOMBRE_MAX} caracteres` })
-  .transform((val) => val.replace(/\s+/g, " ").trim())
+  .transform((val) => toTitleCase(val))
   .refine((val) => !forbiddenChars.test(val), {
     message: "No se permiten caracteres especiales ni etiquetas HTML",
   })
@@ -206,7 +207,8 @@ export default function NewUserPage() {
                   maxLength={NOMBRE_MAX}
                   onKeyDown={handleNameKeyDown}
                   onPaste={makePasteHandler("firstName")}
-                  {...register("firstName")}
+                  onBlur={(e) => setValue("firstName", toTitleCase(e.target.value), { shouldValidate: true })}
+                  {...(({ onBlur: _b, ...r }) => r)(register("firstName"))}
                 />
                 <p className="text-xs text-muted-foreground text-right mt-1">
                   {firstNameValue.length} / {NOMBRE_MAX}
@@ -223,7 +225,8 @@ export default function NewUserPage() {
                   maxLength={NOMBRE_MAX}
                   onKeyDown={handleNameKeyDown}
                   onPaste={makePasteHandler("lastName")}
-                  {...register("lastName")}
+                  onBlur={(e) => setValue("lastName", toTitleCase(e.target.value), { shouldValidate: true })}
+                  {...(({ onBlur: _b, ...r }) => r)(register("lastName"))}
                 />
                 <p className="text-xs text-muted-foreground text-right mt-1">
                   {lastNameValue.length} / {NOMBRE_MAX}

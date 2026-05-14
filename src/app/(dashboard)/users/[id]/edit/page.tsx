@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Save, User } from "lucide-react";
+import { toTitleCase } from "@/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PageLoader } from "@/components/common/LoadingSpinner";
 import { useUsers, usePermissions } from "@/hooks";
@@ -36,6 +38,13 @@ const ROLE_TYPE_LABELS: Record<string, string> = {
   ARCHIVADOR: "Archivador",
 };
 
+const ROLE_COLORS: Record<string, string> = {
+  SUPER_ADMIN: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  NOTARIO:     "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  MATRIZADOR:  "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  ARCHIVADOR:  "bg-amber-500/10 text-amber-400 border-amber-500/20",
+};
+
 const NOMBRE_MAX = 60;
 
 const forbiddenChars = /[<>"';&#/\\]/;
@@ -45,7 +54,7 @@ const userNameField = z
   .string()
   .min(2, { message: "Mínimo 2 caracteres" })
   .max(NOMBRE_MAX, { message: `Máximo ${NOMBRE_MAX} caracteres` })
-  .transform((val) => val.replace(/\s+/g, " ").trim())
+  .transform((val) => toTitleCase(val))
   .refine((val) => !forbiddenChars.test(val), {
     message: "No se permiten caracteres especiales ni etiquetas HTML",
   })
@@ -65,7 +74,8 @@ const userSchema = z.object({
     .refine((val) => !/[<>]/.test(val), {
       message: "El correo no puede contener caracteres HTML",
     }),
-  roleId: z.string().optional(),
+  // stores role TYPE ("NOTARIO"), converted to UUID only on submit
+  roleType: z.string().optional(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -78,7 +88,7 @@ export default function EditUserPage() {
   const [roles, setRoles] = useState<RoleItem[]>([]);
 
   const isSelf = id === me?.id;
-  const isTargetSuperAdmin = targetUser?.roles?.includes("SUPER_ADMIN") ?? false;
+  const isTargetSuperAdmin = (targetUser?.roles ?? []).includes("SUPER_ADMIN");
   const showDisabledStatus = isSuperAdmin() && isSelf;
   const showRoleSelector = isSuperAdmin() && !isSelf && !isTargetSuperAdmin;
 
@@ -91,7 +101,7 @@ export default function EditUserPage() {
     formState: { errors, isSubmitted, isValid },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: { firstName: "", lastName: "", email: "", roleId: "" },
+    defaultValues: { firstName: "", lastName: "", email: "", roleType: "" },
   });
 
   const firstNameValue = watch("firstName") || "";
@@ -149,23 +159,24 @@ export default function EditUserPage() {
 
   useEffect(() => {
     if (targetUser) {
-      const currentRoleType = targetUser.roles?.[0];
-      const matchedRole = roles.find((r) => r.type === currentRoleType);
       reset({
         firstName: targetUser.firstName,
-        lastName: targetUser.lastName,
-        email: targetUser.email,
-        roleId: matchedRole?.id ?? "",
+        lastName:  targetUser.lastName,
+        email:     targetUser.email,
+        // store type directly — "NOTARIO" matches SelectItem value={role.type}
+        roleType:  targetUser.roles?.[0] ?? "",
       });
     }
-  }, [targetUser, roles, reset]);
+  }, [targetUser, reset]);
 
   const onSubmit = async (data: UserFormData) => {
+    // convert type → UUID for the backend
+    const selectedRole = roles.find((r) => r.type === data.roleType);
     await updateUser(id, {
-      email: data.email,
+      email:     data.email,
       firstName: data.firstName,
-      lastName: data.lastName,
-      ...(showRoleSelector && data.roleId ? { roleIds: [data.roleId] } : {}),
+      lastName:  data.lastName,
+      ...(showRoleSelector && selectedRole ? { roleIds: [selectedRole.id] } : {}),
     });
     router.push("/users");
   };
@@ -224,6 +235,19 @@ export default function EditUserPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Current role — read-only badge */}
+            {targetUser?.roles?.[0] && (
+              <div className="flex items-center gap-2 pb-3 border-b border-border">
+                <span className="text-sm text-muted-foreground">Rol actual</span>
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${ROLE_COLORS[targetUser.roles[0]] ?? ""}`}
+                >
+                  {ROLE_TYPE_LABELS[targetUser.roles[0]] ?? targetUser.roles[0]}
+                </Badge>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="firstName">Nombre</Label>
@@ -232,7 +256,8 @@ export default function EditUserPage() {
                   maxLength={NOMBRE_MAX}
                   onKeyDown={handleNameKeyDown}
                   onPaste={makePasteHandler("firstName")}
-                  {...register("firstName")}
+                  onBlur={(e) => setValue("firstName", toTitleCase(e.target.value), { shouldValidate: true })}
+                  {...(({ onBlur: _b, ...r }) => r)(register("firstName"))}
                 />
                 <p className="text-xs text-muted-foreground text-right mt-1">
                   {firstNameValue.length} / {NOMBRE_MAX}
@@ -248,7 +273,8 @@ export default function EditUserPage() {
                   maxLength={NOMBRE_MAX}
                   onKeyDown={handleNameKeyDown}
                   onPaste={makePasteHandler("lastName")}
-                  {...register("lastName")}
+                  onBlur={(e) => setValue("lastName", toTitleCase(e.target.value), { shouldValidate: true })}
+                  {...(({ onBlur: _b, ...r }) => r)(register("lastName"))}
                 />
                 <p className="text-xs text-muted-foreground text-right mt-1">
                   {lastNameValue.length} / {NOMBRE_MAX}
@@ -277,15 +303,15 @@ export default function EditUserPage() {
               <div className="space-y-1.5">
                 <Label>Rol</Label>
                 <Select
-                  value={watch("roleId") ?? ""}
-                  onValueChange={(v) => setValue("roleId", v ?? undefined)}
+                  value={watch("roleType") ?? ""}
+                  onValueChange={(v) => setValue("roleType", v ?? "")}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona un rol" />
                   </SelectTrigger>
                   <SelectContent>
                     {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
+                      <SelectItem key={role.id} value={role.type}>
                         {ROLE_TYPE_LABELS[role.type] ?? role.name}
                       </SelectItem>
                     ))}

@@ -32,6 +32,7 @@ import {
 import type { User, Role } from "@/types";
 import { usersService } from "@/services";
 import { toast } from "sonner";
+import { extractRoleKey } from "@/utils/formatters";
 
 const ROLE_OPTIONS: { value: Role | ""; label: string }[] = [
   { value: "", label: "Todos los roles" },
@@ -60,20 +61,22 @@ export default function UsersPage() {
   const { users, isLoading, fetchUsers, deleteUser } = useUsers();
   const { isSuperAdmin, isNotario, canManageUsers, user: currentUser } = usePermissions();
 
+  const roleKeys = (u: User) => u.roles ?? [];
+
   // El NOTARIO no puede editar cuentas SUPER_ADMIN
   const canActOn = (target: User) =>
-    isSuperAdmin() || !(target.roles ?? []).includes("SUPER_ADMIN");
+    isSuperAdmin() || !roleKeys(target).includes("SUPER_ADMIN");
 
   // Ocultar el botón Eliminar cuando el target es una cuenta SUPER_ADMIN
   const canDeleteUser = (target: User) =>
-    !(target.roles ?? []).includes("SUPER_ADMIN");
+    !roleKeys(target).includes("SUPER_ADMIN");
 
   // Solo super_admin puede activar/desactivar. Retorna el estado del botón toggle para el target.
   type ToggleState = "allowed" | "self" | "super_admin_target" | "no_permission";
   const toggleState = (target: User): ToggleState => {
     if (!isSuperAdmin()) return "no_permission";
     if (target.id === currentUser?.id) return "self";
-    if ((target.roles ?? []).includes("SUPER_ADMIN")) return "super_admin_target";
+    if (roleKeys(target).includes("SUPER_ADMIN")) return "super_admin_target";
     return "allowed";
   };
 
@@ -102,7 +105,7 @@ export default function UsersPage() {
       );
     }
     if (role) {
-      data = data.filter((u) => (u.roles ?? []).includes(role));
+      data = data.filter((u) => roleKeys(u).includes(role));
     }
     return data;
   }, [users?.data, search, role]);
@@ -123,7 +126,7 @@ export default function UsersPage() {
       toast.error("No puedes desactivar tu propia cuenta");
       return;
     }
-    if ((user.roles ?? []).includes("SUPER_ADMIN")) {
+    if (roleKeys(user).includes("SUPER_ADMIN")) {
       toast.error("La cuenta Super Admin no puede ser desactivada");
       return;
     }
@@ -142,7 +145,7 @@ export default function UsersPage() {
     if (!deleteId) return;
     // Tarea 5: guardia frontend — nunca eliminar cuenta SUPER_ADMIN
     const target = users?.data.find((u) => u.id === deleteId);
-    if ((target?.roles ?? []).includes("SUPER_ADMIN")) {
+    if (target && roleKeys(target).includes("SUPER_ADMIN")) {
       alert("No es posible eliminar la cuenta Super Admin");
       setDeleteId(null);
       return;
@@ -174,18 +177,15 @@ export default function UsersPage() {
       key: "role",
       label: "Rol",
       render: (row) => {
-        const roles = (row.roles ?? []) as unknown as (string | { name?: string; type?: string })[];
+        const roles = row.roles ?? [];
         if (roles.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
         return (
           <div className="flex flex-wrap gap-1">
-            {roles.map((r, i) => {
-              const key = typeof r === "string" ? r : (r.name ?? r.type ?? "");
-              return (
-                <Badge key={i} variant="outline" className={`text-xs ${ROLE_COLORS[key] ?? ""}`}>
-                  {ROLE_LABELS[key] || key}
-                </Badge>
-              );
-            })}
+            {roles.map((r, i) => (
+              <Badge key={i} variant="outline" className={`text-xs ${ROLE_COLORS[r] ?? ""}`}>
+                {ROLE_LABELS[r] || r}
+              </Badge>
+            ))}
           </div>
         );
       },

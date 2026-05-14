@@ -25,6 +25,7 @@ import { DataTable, type Column } from "@/components/common/DataTable";
 import { Pagination } from "@/components/common/Pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { archivesService, clientsService } from "@/services";
+import { toTitleCase } from "@/utils/formatters";
 import type { ClientPayload } from "@/services/clients.service";
 import type { Archive } from "@/types";
 import { CharCounter } from "@/components/common/CharCounter";
@@ -228,7 +229,7 @@ function parseCSV(text: string): ParseResult {
     }
 
     rows.push({
-      nombresCompletos,
+      nombresCompletos: toTitleCase(nombresCompletos),
       ...(cedulaRaw ? { cedulaORuc: cedulaRaw } : {}),
       ...(pasaporteRaw ? { pasaporte: pasaporteRaw } : {}),
       nacionalidad,
@@ -363,7 +364,7 @@ export default function ClientsPage() {
     setIsAdding(true);
     try {
       await clientsService.create({
-        nombresCompletos: addForm.nombresCompletos.trim(),
+        nombresCompletos: toTitleCase(addForm.nombresCompletos),
         // Si es pasaporte lo enviamos en cedulaORuc (único campo de identificación del API)
         cedulaORuc: addForm.isPasaporte
           ? (addForm.pasaporte.trim() || undefined)
@@ -628,6 +629,10 @@ export default function ClientsPage() {
                 onChange={(e) => {
                   setAddForm((p) => ({ ...p, nombresCompletos: e.target.value }));
                   setNombreDialogError("");
+                }}
+                onBlur={(e) => {
+                  const clean = toTitleCase(e.target.value);
+                  setAddForm((p) => ({ ...p, nombresCompletos: clean }));
                 }}
               />
               {nombreDialogError && (

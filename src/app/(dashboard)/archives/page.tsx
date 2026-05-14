@@ -242,11 +242,6 @@ export default function ArchivesPage() {
       ),
     },
     {
-      key: "status",
-      label: "Estado",
-      render: (row) => <StatusBadge status={row.status} />,
-    },
-    {
       key: "createdAt",
       label: "Fecha",
       render: (row) => (
@@ -346,24 +341,6 @@ export default function ArchivesPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setServerPage(1); }}
           />
-        </div>
-        <div>
-          <Select
-            value={status || "Todos"}
-            onValueChange={(v) => { setStatus(v === "Todos" ? "" : v as ArchiveStatus); setServerPage(1); }}
-          >
-            <SelectTrigger className="w-48">
-              <Filter className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value || "Todos"} value={opt.value || "Todos"}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 

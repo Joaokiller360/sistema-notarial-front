@@ -29,6 +29,7 @@ import { FileUpload } from "@/components/common/FileUpload";
 import { GrantorForm } from "@/components/common/GrantorForm";
 import { CharCounter } from "@/components/common/CharCounter";
 import { useArchives, useSystemSettings } from "@/hooks";
+import { useArchiveFormStore } from "@/store/archiveFormStore";
 import { archivesService } from "@/services";
 import { cn } from "@/lib/utils";
 import type { ArchiveType } from "@/types";
@@ -130,11 +131,19 @@ function NewArchiveForm() {
   const { config, fetchConfig } = useSystemSettings();
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
+  const { photoFiles, setPhotoFiles, resetArchiveForm: resetStore } = useArchiveFormStore();
+
   const todayStr = new Date().toISOString().split("T")[0];
 
   // ── PDF mode ──────────────────────────────────────────────────────────────
   const [pdfMode, setPdfMode] = useState<"upload" | "photos">("upload");
-  const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
+  const [photoItems, setPhotoItems] = useState<PhotoItem[]>(() =>
+    photoFiles.map((file) => ({
+      id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+      file,
+      preview: URL.createObjectURL(file),
+    }))
+  );
   const [photoDragIndex, setPhotoDragIndex] = useState<number | null>(null);
   const [photoOverIndex, setPhotoOverIndex] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -144,6 +153,10 @@ function NewArchiveForm() {
     return () => { photoItems.forEach((i) => URL.revokeObjectURL(i.preview)); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setPhotoFiles(photoItems.map((i) => i.file));
+  }, [photoItems, setPhotoFiles]);
 
   const maxPhotos = config?.maxPdfImages ?? 20;
 
@@ -220,12 +233,6 @@ function NewArchiveForm() {
 
   const switchMode = (mode: "upload" | "photos") => {
     if (mode === pdfMode) return;
-    if (mode === "photos") {
-      setValue("pdf", null, { shouldValidate: false });
-    } else {
-      photoItems.forEach((i) => URL.revokeObjectURL(i.preview));
-      setPhotoItems([]);
-    }
     setPdfMode(mode);
   };
 
@@ -365,6 +372,8 @@ function NewArchiveForm() {
       }
     }
 
+    photoItems.forEach((i) => URL.revokeObjectURL(i.preview));
+    resetStore();
     router.push(`/archives?type=${data.type}`);
   };
 
@@ -567,22 +576,20 @@ function NewArchiveForm() {
                 </div>
 
                 {/* Upload PDF */}
-                {pdfMode === "upload" && (
-                  <>
-                    <FileUpload
-                      value={(pdf as File) || null}
-                      onChange={(file) => setValue("pdf", file, { shouldValidate: true })}
-                      maxSizeMB={config?.maxPdfSizeMb ?? 10}
-                      uploadProgress={pdfUploadProgress}
-                    />
-                    {errors.pdf && (
-                      <p className="text-xs text-destructive">{errors.pdf.message as string}</p>
-                    )}
-                  </>
-                )}
+                <div style={{ display: pdfMode === "upload" ? "block" : "none" }}>
+                  <FileUpload
+                    value={(pdf as File) || null}
+                    onChange={(file) => setValue("pdf", file, { shouldValidate: true })}
+                    maxSizeMB={config?.maxPdfSizeMb ?? 10}
+                    uploadProgress={pdfUploadProgress}
+                  />
+                  {errors.pdf && (
+                    <p className="text-xs text-destructive">{errors.pdf.message as string}</p>
+                  )}
+                </div>
 
                 {/* Photos mode */}
-                {pdfMode === "photos" && (
+                <div style={{ display: pdfMode === "photos" ? "block" : "none" }}>
                   <div className="space-y-3">
                     {/* Drop zone */}
                     <div
@@ -710,7 +717,7 @@ function NewArchiveForm() {
                       </>
                     )}
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
 

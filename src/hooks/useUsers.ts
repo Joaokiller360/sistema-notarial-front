@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { usersService } from "@/services";
+import { extractRoleKey } from "@/utils/formatters";
 import type {
   User,
   UserFilters,
@@ -84,7 +85,7 @@ export function useUsers() {
   const deleteUser = async (id: string) => {
     // Tarea 5 & 7: guardia en capa de servicio — la cuenta SUPER_ADMIN no puede eliminarse
     const target = users?.data.find((u) => u.id === id);
-    if ((target?.roles ?? []).includes("SUPER_ADMIN")) {
+    if ((target?.roles as unknown[] ?? []).some((r) => extractRoleKey(r) === "SUPER_ADMIN")) {
       toast.error("No es posible eliminar la cuenta Super Admin");
       return;
     }

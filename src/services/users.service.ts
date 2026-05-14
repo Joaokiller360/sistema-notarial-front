@@ -1,6 +1,7 @@
 import { apiClient } from "@/api/axios.client";
 import type {
   User,
+  Role,
   CreateUserRequest,
   UpdateUserRequest,
   UserFilters,
@@ -8,19 +9,51 @@ import type {
   BackendApiResponse,
 } from "@/types";
 
+type RawUser = User & { userRoles?: { role?: { type?: string; name?: string } }[] };
+
+function normalizeRoles(u: RawUser): Role[] {
+  // Backend returns userRoles: [{ role: { id, type, name } }]
+  if (Array.isArray(u.userRoles) && u.userRoles.length > 0) {
+    return u.userRoles
+      .map((ur) => (ur.role?.type ?? ur.role?.name ?? "") as Role)
+      .filter(Boolean) as Role[];
+  }
+  // Fallback: roles as strings or objects
+  if (Array.isArray(u.roles)) {
+    return u.roles
+      .map((r) => {
+        if (typeof r === "string") return r as Role;
+        const obj = r as unknown as { type?: string; name?: string };
+        return (obj.type ?? obj.name ?? "") as Role;
+      })
+      .filter(Boolean) as Role[];
+  }
+  return [];
+}
+
+function normalizeUser(u: RawUser): User {
+  return { ...u, roles: normalizeRoles(u) };
+}
+
+async function fetchUserById(id: string): Promise<User> {
+  const { data } = await apiClient.get<BackendApiResponse<RawUser>>(`/users/${id}`);
+  return normalizeUser(data.data);
+}
+
 export const usersService = {
   getAll: async (filters: UserFilters = {}): Promise<PaginatedUsers> => {
     const response = await apiClient.get("/users", { params: filters });
     const body = response.data;
 
+    let result: PaginatedUsers;
+
     // { success, data: { data: [...], total, page, limit, totalPages } }
     if (body?.data && Array.isArray(body.data?.data)) {
-      return body.data as PaginatedUsers;
+      result = body.data as PaginatedUsers;
     }
-
     // { success, data: [...], total, page, limit, totalPages }
-    if (Array.isArray(body?.data)) {
-      return {
+    else if (Array.isArray(body?.data)) {
+      result = {
         data: body.data,
         total: body.total ?? body.data.length,
         page: body.page ?? filters.page ?? 1,
@@ -30,28 +63,25 @@ export const usersService = {
           Math.ceil((body.total ?? body.data.length) / (body.limit ?? filters.limit ?? 10)),
       };
     }
-
     // Already a PaginatedUsers without wrapper
-    if (Array.isArray(body?.data?.data ?? body?.data)) {
-      return (body.data ?? body) as PaginatedUsers;
+    else {
+      result = (body.data ?? body) as PaginatedUsers;
     }
 
-    return body?.data ?? body;
+    const enriched = await Promise.all(
+      result.data.map((u) => fetchUserById(u.id).catch(() => normalizeUser(u as RawUser)))
+    );
+    return { ...result, data: enriched };
   },
 
-  getById: async (id: string): Promise<User> => {
-    const { data } = await apiClient.get<BackendApiResponse<User>>(
-      `/users/${id}`
-    );
-    return data.data;
-  },
+  getById: (id: string): Promise<User> => fetchUserById(id),
 
   create: async (payload: CreateUserRequest): Promise<User> => {
     const { data } = await apiClient.post<BackendApiResponse<User>>(
       "/users",
       payload
     );
-    return data.data;
+    return normalizeUser(data.data as RawUser);
   },
 
   update: async (id: string, payload: UpdateUserRequest): Promise<User> => {
@@ -59,7 +89,7 @@ export const usersService = {
       `/users/${id}`,
       payload
     );
-    return data.data;
+    return normalizeUser(data.data as RawUser);
   },
 
   delete: async (id: string): Promise<void> => {

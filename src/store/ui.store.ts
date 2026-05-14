@@ -6,10 +6,12 @@ import { persist, createJSONStorage } from "zustand/middleware";
 interface UiState {
   sidebarCollapsed: boolean;
   sidebarMobileOpen: boolean;
+  isGeneratingPdf: boolean;
   toggleSidebar: () => void;
   toggleMobileSidebar: () => void;
   closeMobileSidebar: () => void;
   setSidebarCollapsed: (value: boolean) => void;
+  setIsGeneratingPdf: (val: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -17,6 +19,7 @@ export const useUiStore = create<UiState>()(
     (set) => ({
       sidebarCollapsed: false,
       sidebarMobileOpen: false,
+      isGeneratingPdf: false,
 
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -27,6 +30,8 @@ export const useUiStore = create<UiState>()(
       closeMobileSidebar: () => set({ sidebarMobileOpen: false }),
 
       setSidebarCollapsed: (value) => set({ sidebarCollapsed: value }),
+
+      setIsGeneratingPdf: (val) => set({ isGeneratingPdf: val }),
     }),
     {
       name: "notaria-ui",

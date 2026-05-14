@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/common/PageHeader";
 import { CharCounter } from "@/components/common/CharCounter";
 import { useAuth } from "@/hooks";
+import { extractRoleKey, toTitleCase } from "@/utils/formatters";
 
 const NAME_MAX = 60;
 const NAME_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
@@ -25,14 +26,14 @@ const profileSchema = z.object({
     .string()
     .min(1, "El nombre es obligatorio")
     .max(NAME_MAX, `No puede superar los ${NAME_MAX} caracteres`)
-    .trim()
-    .regex(NAME_REGEX, "El nombre solo puede contener letras"),
+    .transform((val) => toTitleCase(val))
+    .refine((val) => NAME_REGEX.test(val), "El nombre solo puede contener letras"),
   lastName: z
     .string()
     .min(1, "El apellido es obligatorio")
     .max(NAME_MAX, `No puede superar los ${NAME_MAX} caracteres`)
-    .trim()
-    .regex(NAME_REGEX, "El apellido solo puede contener letras"),
+    .transform((val) => toTitleCase(val))
+    .refine((val) => NAME_REGEX.test(val), "El apellido solo puede contener letras"),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -145,9 +146,12 @@ export default function ProfilePage() {
                 </p>
                 <p className="text-sm text-foreground/60">{user?.email}</p>
                 {user?.roles?.[0] && (
-                  <Badge variant="outline" className="mt-1 text-xs border-foreground/20 text-foreground/70">
-                    {ROLE_LABELS[user.roles[0]] ?? user.roles[0]}
-                  </Badge>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm text-muted-foreground">Rol asignado</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {ROLE_LABELS[user.roles[0]] ?? user.roles[0]}
+                    </Badge>
+                  </div>
                 )}
               </div>
             </div>
@@ -180,7 +184,8 @@ export default function ProfilePage() {
                     maxLength={NAME_MAX}
                     onKeyDown={handleNameKeyDown}
                     onPaste={makeNamePasteHandler("firstName")}
-                    {...register("firstName")}
+                    onBlur={(e) => setValue("firstName", toTitleCase(e.target.value), { shouldValidate: true })}
+                    {...(({ onBlur: _b, ...r }) => r)(register("firstName"))}
                   />
                   {errors.firstName && (
                     <p className="text-xs text-destructive">{errors.firstName.message}</p>
@@ -199,7 +204,8 @@ export default function ProfilePage() {
                     maxLength={NAME_MAX}
                     onKeyDown={handleNameKeyDown}
                     onPaste={makeNamePasteHandler("lastName")}
-                    {...register("lastName")}
+                    onBlur={(e) => setValue("lastName", toTitleCase(e.target.value), { shouldValidate: true })}
+                    {...(({ onBlur: _b, ...r }) => r)(register("lastName"))}
                   />
                   {errors.lastName && (
                     <p className="text-xs text-destructive">{errors.lastName.message}</p>

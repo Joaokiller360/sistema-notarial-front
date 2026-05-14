@@ -1,4 +1,5 @@
 export { tokenUtils } from "./token";
+export { toTitleCase, extractRoleKey } from "./formatters";
 
 export function formatDate(date: string | Date, locale = "es-EC") {
   return new Intl.DateTimeFormat(locale, {

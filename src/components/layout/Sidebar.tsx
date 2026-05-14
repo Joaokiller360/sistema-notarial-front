@@ -42,7 +42,7 @@ const settingsItems: NavItem[] = [
 ];
 
 export function Sidebar() {
-  const { sidebarCollapsed, toggleSidebar } = useUiStore();
+  const { sidebarCollapsed, toggleSidebar, isGeneratingPdf } = useUiStore();
   const { is } = usePermissions();
   const pathname = usePathname();
 
@@ -94,6 +94,7 @@ export function Sidebar() {
               item={item}
               isActive={isActive(item.href)}
               collapsed={sidebarCollapsed}
+              disabled={isGeneratingPdf}
             />
           ))}
         </div>
@@ -110,6 +111,7 @@ export function Sidebar() {
               item={item}
               isActive={isActive(item.href)}
               collapsed={sidebarCollapsed}
+              disabled={isGeneratingPdf}
             />
           ))}
         </div>
@@ -140,17 +142,20 @@ interface NavLinkProps {
   item: NavItem;
   isActive: boolean;
   collapsed: boolean;
+  disabled?: boolean;
 }
 
-function NavLink({ item, isActive, collapsed }: NavLinkProps) {
+function NavLink({ item, isActive, collapsed, disabled }: NavLinkProps) {
   const Icon = item.icon;
 
   return (
     <Link
       href={item.href}
       title={collapsed ? item.label : undefined}
+      onClick={(e) => { if (disabled) e.preventDefault(); }}
       className={cn(
         "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+        disabled && "opacity-50 pointer-events-none cursor-not-allowed",
         isActive
           ? "bg-white text-sidebar border border-sidebar-primary/20"
           : "text-sidebar-foreground hover:bg-white hover:text-sidebar"
