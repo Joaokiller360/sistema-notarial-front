@@ -6,5 +6,6 @@ export { logsService } from "./logs.service";
 export { clientsService } from "./clients.service";
 export { systemService } from "./system.service";
 export { newsService } from "./news.service";
+export { notaryService } from "./notary.service";
 export type { RoleItem } from "./roles.service";
 export type { SystemConfig } from "./system.service";

@@ -119,6 +119,15 @@ export const archivesService = {
     return archivesService.uploadPdf(id, pdfFile, onProgress);
   },
 
+  checkCode: async (
+    code: string
+  ): Promise<{ status: "available" | "deleted" | "active" }> => {
+    const { data } = await apiClient.get<
+      BackendApiResponse<{ status: "available" | "deleted" | "active" }>
+    >("/archives/check-code", { params: { code } });
+    return data.data;
+  },
+
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/archives/${id}`, { data: { confirmar_eliminacion: true } });
   },

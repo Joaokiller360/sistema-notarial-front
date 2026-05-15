@@ -9,3 +9,5 @@ export { StatCard } from "./StatCard";
 export { GrantorForm } from "./GrantorForm";
 export { CharCounter } from "./CharCounter";
 export { NacionalidadSelect } from "./NacionalidadSelect";
+export { NotaryForm } from "./NotaryForm";
+export { NotaryInfoBadge } from "./NotaryInfoBadge";

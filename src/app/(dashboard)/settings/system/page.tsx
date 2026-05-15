@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,6 +14,10 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { RoleGuard } from "@/guards";
 import { EmptyState } from "@/components/common/EmptyState";
 import { useSystemSettings } from "@/hooks";
+import { notaryService } from "@/services";
+import { useNotaryStore } from "@/store";
+import { toast } from "sonner";
+import { toTitleCase } from "@/utils/formatters";
 
 const fileConfigSchema = z.object({
   maxPdfSizeMb: z
@@ -39,8 +43,82 @@ const versionSchema = z.object({
 type FileConfigFormData = z.infer<typeof fileConfigSchema>;
 type VersionFormData = z.infer<typeof versionSchema>;
 
+const NAME_MAX = 100;
+const STRIP_NOTARY_NAME = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s.,'\-]/g;
+const ALLOWED_NOTARY_NAME_KEY = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s.,'\-]$/;
+const STRIP_OFFICER_NAME = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'\-]/g;
+const ALLOWED_OFFICER_NAME_KEY = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'\-]$/;
+
 export default function SystemSettingsPage() {
   const { config, isLoading, fetchConfig, updateConfig } = useSystemSettings();
+  const { notaryData, notaryId, setNotaryData, setNotaryId } = useNotaryStore();
+
+  const [notaryName, setNotaryName] = useState(notaryData?.notaryName ?? "");
+  const [notaryNumber, setNotaryNumber] = useState(notaryData?.notaryNumber?.toString() ?? "");
+  const [officerName, setOfficerName] = useState(notaryData?.notaryOfficerName ?? "");
+  const [isSavingNotary, setIsSavingNotary] = useState(false);
+
+  // ── Nombre de la Notaría ──────────────────────────────────────────────────
+  const handleNotaryNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey) return;
+    if (!ALLOWED_NOTARY_NAME_KEY.test(e.key)) e.preventDefault();
+  };
+  const handleNotaryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const filtered = e.target.value.replace(STRIP_NOTARY_NAME, "").slice(0, NAME_MAX);
+    e.target.value = filtered;
+    setNotaryName(filtered);
+  };
+  const handleNotaryNamePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const clean = e.clipboardData.getData("text").replace(STRIP_NOTARY_NAME, "").replace(/\s+/g, " ").trim();
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const newVal = (el.value.slice(0, start) + clean + el.value.slice(end)).slice(0, NAME_MAX);
+    el.value = newVal;
+    setNotaryName(newVal);
+  };
+
+  // ── Número de Notaría ─────────────────────────────────────────────────────
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey) return;
+    if (!/^\d$/.test(e.key)) { e.preventDefault(); return; }
+    const el = e.currentTarget;
+    const hasSelection = el.selectionStart !== el.selectionEnd;
+    if (!hasSelection && el.value.replace(/\D/g, "").length >= 3) e.preventDefault();
+  };
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
+    e.target.value = digits;
+    setNotaryNumber(digits);
+  };
+  const handleNumberPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 3);
+    e.currentTarget.value = digits;
+    setNotaryNumber(digits);
+  };
+
+  // ── Notario Titular ───────────────────────────────────────────────────────
+  const handleOfficerNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key.length > 1 || e.ctrlKey || e.metaKey) return;
+    if (!ALLOWED_OFFICER_NAME_KEY.test(e.key)) e.preventDefault();
+  };
+  const handleOfficerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const filtered = e.target.value.replace(STRIP_OFFICER_NAME, "").slice(0, NAME_MAX);
+    e.target.value = filtered;
+    setOfficerName(filtered);
+  };
+  const handleOfficerNamePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const clean = e.clipboardData.getData("text").replace(STRIP_OFFICER_NAME, "").replace(/\s+/g, " ").trim();
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const newVal = (el.value.slice(0, start) + clean + el.value.slice(end)).slice(0, NAME_MAX);
+    el.value = newVal;
+    setOfficerName(newVal);
+  };
 
   const {
     register,
@@ -68,6 +146,19 @@ export default function SystemSettingsPage() {
   }, [fetchConfig]);
 
   useEffect(() => {
+    notaryService.get().then((data) => {
+      if (data) {
+        setNotaryName(data.notaryName);
+        setNotaryNumber(data.notaryNumber.toString());
+        setOfficerName(data.notaryOfficerName);
+        setNotaryData({ notaryName: data.notaryName, notaryNumber: data.notaryNumber, notaryOfficerName: data.notaryOfficerName });
+        setNotaryId(data.id);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (config) {
       reset({ maxPdfSizeMb: config.maxPdfSizeMb, maxPdfImages: config.maxPdfImages });
       resetVersion({ systemVersion: config.systemVersion ?? "1.0.0" });
@@ -83,6 +174,34 @@ export default function SystemSettingsPage() {
     }
   };
 
+  const handleSaveNotary = async () => {
+    const num = parseInt(notaryNumber, 10);
+    if (!notaryName.trim() || !notaryNumber || isNaN(num) || num < 1 || num > 999 || !officerName.trim()) {
+      toast.error("Completa todos los campos correctamente");
+      return;
+    }
+    const titledName = toTitleCase(notaryName.trim());
+    const titledOfficer = toTitleCase(officerName.trim());
+    const payload = { notaryName: titledName, notaryNumber: num, notaryOfficerName: titledOfficer };
+    setIsSavingNotary(true);
+    try {
+      if (notaryId) {
+        await notaryService.update(notaryId, payload);
+      } else {
+        const response = await notaryService.create(payload);
+        setNotaryId(response.id);
+      }
+      setNotaryName(titledName);
+      setOfficerName(titledOfficer);
+      setNotaryData(payload);
+      toast.success("Información de la notaría guardada");
+    } catch (err: unknown) {
+      toast.error((err as Error).message ?? "Error al guardar la información");
+    } finally {
+      setIsSavingNotary(false);
+    }
+  };
+
   const handleVersionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const control = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab"];
     if (control.includes(e.key) || e.ctrlKey || e.metaKey) return;
@@ -95,7 +214,7 @@ export default function SystemSettingsPage() {
     const clean = pasted.replace(/[^a-zA-Z0-9.\-_]/g, "").slice(0, 30);
     const el = e.currentTarget;
     const start = el.selectionStart ?? 0;
-    const end   = el.selectionEnd   ?? 0;
+    const end = el.selectionEnd ?? 0;
     const newVal = (el.value.slice(0, start) + clean + el.value.slice(end)).slice(0, 30);
     setVersionValue("systemVersion", newVal, { shouldValidate: true });
   };
@@ -140,17 +259,63 @@ export default function SystemSettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Nombre de la Notaría</Label>
-                <Input placeholder="Notaría Primera del Cantón..." />
+                <Input
+                  placeholder="Notaría Primera del Cantón..."
+                  value={notaryName}
+                  maxLength={NAME_MAX}
+                  onKeyDown={handleNotaryNameKeyDown}
+                  onChange={handleNotaryNameChange}
+                  onPaste={handleNotaryNamePaste}
+                />
+                <p className="text-xs text-muted-foreground text-right">
+                  {notaryName.length}/{NAME_MAX}
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Número de Notaría</Label>
-                <Input placeholder="001" />
+                <Input
+                  placeholder="001"
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={notaryNumber}
+                  onKeyDown={handleNumberKeyDown}
+                  onChange={handleNumberChange}
+                  onPaste={handleNumberPaste}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Notario Titular</Label>
-                <Input placeholder="Dr. Juan Pérez" />
+                <Input
+                  placeholder="Dr. Juan Pérez"
+                  value={officerName}
+                  maxLength={NAME_MAX}
+                  onKeyDown={handleOfficerNameKeyDown}
+                  onChange={handleOfficerNameChange}
+                  onPaste={handleOfficerNamePaste}
+                />
+                <p className="text-xs text-muted-foreground text-right">
+                  {officerName.length}/{NAME_MAX}
+                </p>
               </div>
-              <Button className="text-primary-foreground cursor-pointer">Guardar Información</Button>
+              <Button
+                type="button"
+                className="text-primary-foreground cursor-pointer"
+                onClick={handleSaveNotary}
+                disabled={isSavingNotary}
+              >
+                {isSavingNotary ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Guardando...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Save className="w-4 h-4" />
+                    Guardar Información
+                  </span>
+                )}
+              </Button>
             </CardContent>
           </Card>
 

@@ -48,6 +48,8 @@ const OBS_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]*$/;
 const PHOTO_ACCEPTED = ["image/jpeg", "image/png"];
 const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 
+type CodeCheckStatus = "idle" | "checking" | "available" | "deleted" | "active";
+
 interface PhotoItem {
   id: string;
   file: File;
@@ -98,7 +100,7 @@ const archiveSchema = z.object({
     .string()
     .min(1, "El código es requerido")
     .max(17, "Máximo 17 caracteres")
-    .regex(/^[a-zA-Z0-9]*$/, "Solo letras y números, sin espacios ni caracteres especiales"),
+    .regex(/^[a-zA-Z0-9-]*$/, "Solo letras, números y guiones, sin espacios ni caracteres especiales"),
   documentDate: z
     .string()
     .optional()
@@ -137,6 +139,8 @@ function NewArchiveForm() {
 
   // ── PDF mode ──────────────────────────────────────────────────────────────
   const [pdfMode, setPdfMode] = useState<"upload" | "photos">("upload");
+  const [codeStatus, setCodeStatus] = useState<CodeCheckStatus>("idle");
+  const codeCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [photoItems, setPhotoItems] = useState<PhotoItem[]>(() =>
     photoFiles.map((file) => ({
       id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
@@ -150,7 +154,10 @@ function NewArchiveForm() {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    return () => { photoItems.forEach((i) => URL.revokeObjectURL(i.preview)); };
+    return () => {
+      photoItems.forEach((i) => URL.revokeObjectURL(i.preview));
+      if (codeCheckTimer.current) clearTimeout(codeCheckTimer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -236,6 +243,20 @@ function NewArchiveForm() {
     setPdfMode(mode);
   };
 
+  const checkCodeDebounced = useCallback((code: string) => {
+    if (codeCheckTimer.current) clearTimeout(codeCheckTimer.current);
+    if (!code.trim()) { setCodeStatus("idle"); return; }
+    setCodeStatus("checking");
+    codeCheckTimer.current = setTimeout(async () => {
+      try {
+        const result = await archivesService.checkCode(code.trim());
+        setCodeStatus(result.status);
+      } catch {
+        setCodeStatus("idle");
+      }
+    }, 400);
+  }, []);
+
   // ── Form ──────────────────────────────────────────────────────────────────
   const methods = useForm<ArchiveFormData>({
     resolver: zodResolver(archiveSchema),
@@ -256,6 +277,7 @@ function NewArchiveForm() {
     setValue,
     watch,
     setError,
+    clearErrors,
     formState: { errors, isSubmitted, isValid },
   } = methods;
 
@@ -267,7 +289,7 @@ function NewArchiveForm() {
   const handleCodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter", "Home", "End"];
     if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
-    if (!/^[a-zA-Z0-9]$/.test(e.key)) e.preventDefault();
+    if (!/^[a-zA-Z0-9-]$/.test(e.key)) e.preventDefault();
   };
 
   const handleObsKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -280,7 +302,7 @@ function NewArchiveForm() {
   const handleCodePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text");
-    const clean = pasted.replace(/[^a-zA-Z0-9]/g, "").slice(0, 17);
+    const clean = pasted.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 17);
     const el = e.currentTarget;
     const start = el.selectionStart ?? 0;
     const end   = el.selectionEnd   ?? 0;
@@ -347,8 +369,12 @@ function NewArchiveForm() {
         beneficiaries: data.beneficiaries.map(cleanPerson),
         pdf: pdfMode === "upload" ? (data.pdf as File) : undefined,
       });
-    } catch {
-      return; // toast already shown by the hook
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setError("code", { message: "Este código ya está en uso por un archivo activo" });
+      }
+      return;
     }
 
     if (!created) return;
@@ -470,11 +496,31 @@ function NewArchiveForm() {
                     maxLength={17}
                     onKeyDown={handleCodeKeyDown}
                     onPaste={handleCodePaste}
-                    {...register("code")}
+                    {...register("code", {
+                      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                        clearErrors("code");
+                        checkCodeDebounced(e.target.value);
+                      },
+                    })}
                   />
-                  {errors.code && (
+                  {errors.code ? (
                     <p className="text-xs text-destructive">{errors.code.message}</p>
-                  )}
+                  ) : codeValue && codeStatus !== "idle" ? (
+                    <p className={cn("text-xs flex items-center gap-1.5", {
+                      "text-muted-foreground": codeStatus === "checking",
+                      "text-emerald-400":      codeStatus === "available",
+                      "text-amber-400":        codeStatus === "deleted",
+                      "text-destructive":      codeStatus === "active",
+                    })}>
+                      {codeStatus === "checking" && (
+                        <span className="w-2.5 h-2.5 rounded-full border border-current border-t-transparent animate-spin" />
+                      )}
+                      {codeStatus === "checking"  && "Verificando disponibilidad..."}
+                      {codeStatus === "available" && "✅ Código disponible"}
+                      {codeStatus === "deleted"   && "⚠️ Código usado por un archivo eliminado (disponible para reutilizar)"}
+                      {codeStatus === "active"    && "❌ Código ya en uso por un archivo activo"}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="space-y-1.5">

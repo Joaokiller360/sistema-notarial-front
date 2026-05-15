@@ -1,4 +1,5 @@
 export * from "./auth.types";
+export * from "./notary.types";
 export * from "./archive.types";
 export * from "./user.types";
 export * from "./log.types";

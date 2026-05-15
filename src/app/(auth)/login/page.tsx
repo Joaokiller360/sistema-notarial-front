@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks";
+import { NotaryInfoBadge } from "@/components/common/NotaryInfoBadge";
 
 const loginSchema = z.object({
   email: z.string().email("Correo electrónico inválido"),
@@ -49,6 +50,9 @@ export default function LoginPage() {
           Ingresa tus credenciales para acceder al sistema
         </p>
       </div>
+
+      {/* Notary info badge — visible only when notaryData exists in store */}
+      <NotaryInfoBadge />
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
