@@ -5,6 +5,18 @@ const API_BASE =
   "https://dev.joaobarres.dev";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.s3.amazonaws.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.s3.*.amazonaws.com",
+      },
+    ],
+  },
   async rewrites() {
     return [
       {

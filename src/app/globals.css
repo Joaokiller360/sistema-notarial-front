@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* tw-animate-css inlined — Tailwind v4 resolver doesn't support node_modules @import */
 @property --tw-enter-opacity { syntax: "*"; inherits: false; initial-value: 1; }

@@ -54,7 +54,6 @@ export function useAuth() {
     setIsLoading(true);
     try {
       const updated = await usersService.update(user.id, payload);
-      // Merge: the PATCH response may omit roles/permissions — keep the existing ones
       setUser({
         ...user,
         ...updated,

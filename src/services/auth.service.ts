@@ -34,6 +34,17 @@ export const authService = {
     return data.data;
   },
 
+  updateMe: async (payload: {
+    firstName: string;
+    lastName: string;
+  }): Promise<User> => {
+    const { data } = await apiClient.patch<BackendApiResponse<User>>(
+      "/auth/me",
+      payload
+    );
+    return data.data;
+  },
+
   changePassword: async (payload: {
     currentPassword: string;
     newPassword: string;

@@ -1,4 +1,5 @@
 export { useAuth } from "./useAuth";
+export { useNotifications } from "./useNotifications";
 export { usePermissions } from "./usePermissions";
 export { useArchives } from "./useArchives";
 export { useUsers } from "./useUsers";

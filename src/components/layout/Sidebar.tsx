@@ -14,10 +14,11 @@ import {
   ScrollText,
   UserRound,
   Newspaper,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store";
-import { usePermissions } from "@/hooks";
+import { usePermissions, useNotifications } from "@/hooks";
 
 interface NavItem {
   label: string;
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { label: "Archivos", href: "/archives", icon: FolderArchive },
   { label: "Clientes", href: "/clients", icon: UserRound },
   { label: "Noticias", href: "/news", icon: Newspaper },
+  { label: "Notificaciones", href: "/notifications", icon: Bell },
   { label: "Usuarios", href: "/users", icon: Users, roles: ["SUPER_ADMIN", "NOTARIO"] },
   { label: "Logs", href: "/logs", icon: ScrollText, roles: ["SUPER_ADMIN"] },
 ];
@@ -44,6 +46,7 @@ const settingsItems: NavItem[] = [
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar, isGeneratingPdf } = useUiStore();
   const { is } = usePermissions();
+  const { unreadCount } = useNotifications();
   const pathname = usePathname();
 
   const isActive = (href: string) =>
@@ -95,6 +98,7 @@ export function Sidebar() {
               isActive={isActive(item.href)}
               collapsed={sidebarCollapsed}
               disabled={isGeneratingPdf}
+              badge={item.href === "/notifications" && unreadCount > 0 ? unreadCount : undefined}
             />
           ))}
         </div>
@@ -143,9 +147,10 @@ interface NavLinkProps {
   isActive: boolean;
   collapsed: boolean;
   disabled?: boolean;
+  badge?: number;
 }
 
-function NavLink({ item, isActive, collapsed, disabled }: NavLinkProps) {
+function NavLink({ item, isActive, collapsed, disabled, badge }: NavLinkProps) {
   const Icon = item.icon;
 
   return (
@@ -161,13 +166,29 @@ function NavLink({ item, isActive, collapsed, disabled }: NavLinkProps) {
           : "text-sidebar-foreground hover:bg-white hover:text-sidebar"
       )}
     >
-      <Icon
-        className={cn(
-          "flex-shrink-0 w-4 h-4",
-          isActive ? "text-sidebar" : "hover:text-sidebar-foreground"
+      <span className="relative flex-shrink-0">
+        <Icon
+          className={cn(
+            "w-4 h-4",
+            isActive ? "text-sidebar" : "hover:text-sidebar-foreground"
+          )}
+        />
+        {badge !== undefined && collapsed && (
+          <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+            {badge > 99 ? "99+" : badge}
+          </span>
         )}
-      />
-      {!collapsed && <span className="truncate">{item.label}</span>}
+      </span>
+      {!collapsed && (
+        <span className="flex-1 flex items-center justify-between truncate">
+          <span className="truncate">{item.label}</span>
+          {badge !== undefined && (
+            <span className="ml-1.5 min-w-[18px] h-4.5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+              {badge > 99 ? "99+" : badge}
+            </span>
+          )}
+        </span>
+      )}
     </Link>
   );
 }

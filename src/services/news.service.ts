@@ -1,4 +1,4 @@
-import { apiClient } from "@/api/axios.client";
+import { apiClient, apiFormClient } from "@/api/axios.client";
 import type {
   News,
   CreateNewsRequest,
@@ -34,11 +34,32 @@ export const newsService = {
     return body?.data ?? body;
   },
 
+  getById: async (id: string): Promise<News> => {
+    const { data } = await apiClient.get<BackendApiResponse<News>>(`/news/${id}`);
+    return (data as { data?: News }).data ?? (data as unknown as News);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await apiClient.delete(`/news/${id}`);
+  },
+
   create: async (payload: CreateNewsRequest): Promise<News> => {
-    const { data } = await apiClient.post<BackendApiResponse<News>>(
-      "/news",
-      payload
-    );
+    if (payload.image) {
+      const form = new FormData();
+      form.append("title", payload.title);
+      form.append("description", payload.description);
+      form.append("image", payload.image);
+      const { data } = await apiFormClient.post<BackendApiResponse<News>>(
+        "/news",
+        form
+      );
+      return data.data;
+    }
+
+    const { data } = await apiClient.post<BackendApiResponse<News>>("/news", {
+      title: payload.title,
+      description: payload.description,
+    });
     return data.data;
   },
 };

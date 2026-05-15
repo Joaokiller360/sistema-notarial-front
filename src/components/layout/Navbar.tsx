@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, LogOut, User, Settings } from "lucide-react";
+import { Menu, LogOut, User, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUiStore } from "@/store";
 import { useAuth } from "@/hooks";
@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "@/components/notifications";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
@@ -56,10 +57,7 @@ export function Navbar() {
       <div id="breadcrumbs-portal" className="flex-1 hidden md:block" />
 
       <div className="flex items-center gap-2 ml-auto">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
-        </Button>
+        <NotificationBell />
 
         <DropdownMenu>
           <DropdownMenuTrigger
