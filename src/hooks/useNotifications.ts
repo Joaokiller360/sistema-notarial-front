@@ -31,7 +31,7 @@ export function useNotifications() {
     let cancelled = false;
     setUsersLoading(true);
     usersService
-      .getAll({ page: 1, limit: 100 })
+      .getAll({ page: 1, limit: 50 })
       .then((res) => { if (!cancelled) setUsers(res.data); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setUsersLoading(false); });
@@ -128,6 +128,36 @@ export function useNotifications() {
       const notification = await notificationsService.send(payload);
       prependNotification(notification);
       toast.success("Notificación enviada exitosamente");
+
+      {
+        const emails =
+          payload.recipientId === "ALL"
+            ? users.map((u) => u.email).filter(Boolean)
+            : users
+                .filter((u) => u.id === payload.recipientId)
+                .map((u) => u.email)
+                .filter(Boolean);
+
+        if (emails.length > 0) {
+          fetch("/api/emails/notification", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              emails,
+              notification: {
+                subject: payload.subject,
+                message: payload.message,
+                type: payload.type,
+                senderName: `${user.firstName} ${user.lastName}`,
+              },
+            }),
+          })
+            .then((r) => r.json())
+            .then((r) => console.log("[email/notification]", r))
+            .catch(() => {});
+        }
+      }
+
       return true;
     } catch {
       toast.error("Error al enviar la notificación");
@@ -141,6 +171,30 @@ export function useNotifications() {
       const task = await tasksService.create(payload);
       prependTask(task);
       toast.success("Tarea asignada exitosamente");
+
+      {
+        const recipient = users.find((u) => u.id === payload.recipientId);
+        if (recipient?.email) {
+          fetch("/api/emails/task", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: recipient.email,
+              task: {
+                title: payload.title,
+                description: payload.description,
+                priority: payload.priority,
+                dueDate: payload.dueDate,
+                senderName: `${user.firstName} ${user.lastName}`,
+              },
+            }),
+          })
+            .then((r) => r.json())
+            .then((r) => console.log("[email/task]", r))
+            .catch(() => {});
+        }
+      }
+
       return true;
     } catch {
       toast.error("Error al asignar la tarea");

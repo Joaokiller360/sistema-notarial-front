@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { newsService } from "@/services";
+import { newsService, usersService } from "@/services";
 import type { News, PaginatedNews, CreateNewsRequest, NewsFilters } from "@/types";
 
 export function useNews() {
@@ -42,6 +42,41 @@ export function useNews() {
     try {
       const data = await newsService.create(payload);
       toast.success("Noticia publicada exitosamente");
+
+      if (data?.id) {
+        (async () => {
+          try {
+            // Paginate users with safe page size
+            const allEmails: string[] = [];
+            let page = 1;
+            const limit = 50;
+
+            while (true) {
+              const res = await usersService.getAll({ page, limit });
+              const emails = res.data.map((u) => u.email).filter(Boolean);
+              allEmails.push(...emails);
+              if (res.data.length < limit) break;
+              page++;
+            }
+
+            if (allEmails.length === 0) return;
+
+            const result = await fetch("/api/emails/news", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                emails: allEmails,
+                news: { id: data.id, title: data.title, description: data.description },
+              }),
+            }).then((r) => r.json());
+
+            console.log("[email/news]", result);
+          } catch (e) {
+            console.error("[email/news] error:", e);
+          }
+        })();
+      }
+
       return data;
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: unknown } } })
