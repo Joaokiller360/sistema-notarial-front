@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FolderArchive, Users, UserRound, Plus, Newspaper, CalendarDays, ImageOff } from "lucide-react";
+import { FolderArchive, Users, UserRound, Plus, Newspaper, CalendarDays, ImageOff, BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { useAuthStore } from "@/store";
@@ -23,9 +23,15 @@ interface Stats {
   totalUsers: number;
 }
 
+interface YearCount {
+  year: string;
+  count: number;
+}
+
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [archivesByYear, setArchivesByYear] = useState<YearCount[]>([]);
   const [latestNews, setLatestNews] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,11 +74,21 @@ export default function DashboardPage() {
             for (const r of results) collected = collected.concat(r.data);
           }
           const keys = new Set<string>();
+          const yearMap: Record<string, number> = {};
           for (const a of collected) {
             for (const g of a.grantors) keys.add(g.cedulaORuc ?? g.nombresCompletos);
             for (const b of a.beneficiaries) keys.add(b.cedulaORuc ?? b.nombresCompletos);
+            const year = a.code?.substring(0, 4);
+            if (year && /^\d{4}$/.test(year)) {
+              yearMap[year] = (yearMap[year] ?? 0) + 1;
+            }
           }
           totalClients = keys.size;
+          setArchivesByYear(
+            Object.entries(yearMap)
+              .map(([year, count]) => ({ year, count }))
+              .sort((a, b) => b.year.localeCompare(a.year))
+          );
         }
 
         setStats({
@@ -128,6 +144,35 @@ export default function DashboardPage() {
           icon={Users}
           isLoading={isLoading}
         />
+      </div>
+
+      {/* Archivos por año */}
+      <div className="rounded-lg border border-border bg-card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <BookOpen className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold">Libros por Año</h3>
+        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-lg bg-muted h-16" />
+            ))}
+          </div>
+        ) : archivesByYear.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin datos de años disponibles.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {archivesByYear.map(({ year, count }) => (
+              <div
+                key={year}
+                className="flex flex-col items-center justify-center rounded-lg border border-border bg-muted/30 p-3 gap-1"
+              >
+                <span className="text-2xl font-bold text-primary leading-none">{count}</span>
+                <span className="text-xs text-muted-foreground font-medium">{year}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
