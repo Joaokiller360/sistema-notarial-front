@@ -28,7 +28,6 @@ import { GrantorForm } from "@/components/common/GrantorForm";
 import { CharCounter } from "@/components/common/CharCounter";
 import { PageLoader } from "@/components/common/LoadingSpinner";
 import { useArchives, useSystemSettings } from "@/hooks";
-import { archivesService } from "@/services";
 import { cn } from "@/lib/utils";
 import type { ArchiveType } from "@/types";
 
@@ -356,6 +355,21 @@ export default function EditArchivePage() {
       nacionalidad: p.nacionalidad,
     });
 
+    // Generate PDF locally first — archive is not updated until PDF is ready
+    let photoPdf: File | undefined;
+    if (pdfMode === "photos") {
+      setIsGenerating(true);
+      try {
+        const { generatePdfFromImages } = await import("@/utils/generatePdfFromImages");
+        photoPdf = await generatePdfFromImages(photoItems.map((i) => i.file));
+      } catch {
+        toast.error("No se pudo generar el PDF. Intenta de nuevo.");
+        setIsGenerating(false);
+        return;
+      }
+      setIsGenerating(false);
+    }
+
     let result;
     try {
       result = await updateArchive(id, {
@@ -367,32 +381,13 @@ export default function EditArchivePage() {
         observations: data.observations || undefined,
         grantors: data.grantors.map(cleanPerson),
         beneficiaries: data.beneficiaries.map(cleanPerson),
-        pdf: pdfMode === "upload" ? (data.pdf as File) || undefined : undefined,
+        pdf: pdfMode === "upload" ? (data.pdf as File) || undefined : photoPdf,
       });
     } catch {
       return; // toast already shown by the hook
     }
 
     if (!result) return;
-
-    if (pdfMode === "photos") {
-      setIsGenerating(true);
-      try {
-        await archivesService.generatePdf(id, photoItems.map((i) => i.file));
-        toast.success("PDF generado y adjuntado correctamente.");
-      } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-        if (status === 404) {
-          toast.error("Archivo no encontrado.");
-          router.push("/archives");
-          return;
-        }
-        toast.warning(msg ?? "El PDF no se pudo generar. Puedes intentarlo de nuevo.");
-      } finally {
-        setIsGenerating(false);
-      }
-    }
 
     router.push(`/archives/${id}`);
   };
@@ -410,6 +405,16 @@ export default function EditArchivePage() {
 
   return (
     <FormProvider {...methods}>
+      {isBusy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card px-10 py-8 shadow-xl">
+            <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm font-medium text-foreground">
+              {isGenerating ? "Generando PDF..." : "Guardando..."}
+            </p>
+          </div>
+        </div>
+      )}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <PageHeader
           title={`Editar ${archive.code}`}

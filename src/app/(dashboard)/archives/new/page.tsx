@@ -356,6 +356,21 @@ function NewArchiveForm() {
       nacionalidad: p.nacionalidad,
     });
 
+    // Generate PDF locally first — archive is not created until PDF is ready
+    let photoPdf: File | undefined;
+    if (pdfMode === "photos") {
+      setIsGenerating(true);
+      try {
+        const { generatePdfFromImages } = await import("@/utils/generatePdfFromImages");
+        photoPdf = await generatePdfFromImages(photoItems.map((i) => i.file));
+      } catch {
+        toast.error("No se pudo generar el PDF. Intenta de nuevo.");
+        setIsGenerating(false);
+        return;
+      }
+      setIsGenerating(false);
+    }
+
     let created;
     try {
       created = await createArchive({
@@ -367,7 +382,7 @@ function NewArchiveForm() {
         observations: data.observations || undefined,
         grantors: data.grantors.map(cleanPerson),
         beneficiaries: data.beneficiaries.map(cleanPerson),
-        pdf: pdfMode === "upload" ? (data.pdf as File) : undefined,
+        pdf: pdfMode === "upload" ? (data.pdf as File) : photoPdf,
       });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -379,25 +394,6 @@ function NewArchiveForm() {
 
     if (!created) return;
 
-    if (pdfMode === "photos") {
-      setIsGenerating(true);
-      try {
-        await archivesService.generatePdf(created.id, photoItems.map((i) => i.file));
-        toast.success("PDF generado y adjuntado correctamente.");
-      } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-        if (status === 404) {
-          toast.error("Archivo no encontrado.");
-          router.push("/archives");
-          return;
-        }
-        toast.warning(msg ?? "El PDF no se pudo generar. Puedes intentarlo desde el detalle del archivo.");
-      } finally {
-        setIsGenerating(false);
-      }
-    }
-
     photoItems.forEach((i) => URL.revokeObjectURL(i.preview));
     resetStore();
     router.push(`/archives?type=${data.type}`);
@@ -408,6 +404,16 @@ function NewArchiveForm() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <FormProvider {...methods}>
+      {isBusy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card px-10 py-8 shadow-xl">
+            <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm font-medium text-foreground">
+              {isGenerating ? "Generando PDF..." : "Guardando..."}
+            </p>
+          </div>
+        </div>
+      )}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <PageHeader
           title="Nuevo Archivo"

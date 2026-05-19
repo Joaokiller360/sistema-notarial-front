@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { archivesService } from "@/services";
 import { useSystemSettings } from "@/hooks";
+import { normalizeImageOrientation } from "@/utils/normalizeImageOrientation";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
@@ -41,7 +42,7 @@ export function PhotoToPdfUploader({ archiveId }: PhotoToPdfUploaderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addFiles = useCallback((fileList: FileList | File[]) => {
+  const addFiles = useCallback(async (fileList: FileList | File[]) => {
     const incoming = Array.from(fileList);
     const valid: ImageItem[] = [];
 
@@ -54,10 +55,11 @@ export function PhotoToPdfUploader({ archiveId }: PhotoToPdfUploaderProps) {
         toast.error(`"${file.name}" supera el límite de 10 MB.`);
         continue;
       }
+      const normalized = await normalizeImageOrientation(file);
       valid.push({
         id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
-        file,
-        preview: URL.createObjectURL(file),
+        file: normalized,
+        preview: URL.createObjectURL(normalized),
       });
     }
 
