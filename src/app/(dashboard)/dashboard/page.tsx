@@ -146,11 +146,11 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Archivos por año */}
+      {/* Tramites por año */}
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold">Libros por Año</h3>
+          <h3 className="text-sm font-semibold">Tramites por Año</h3>
         </div>
         {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">

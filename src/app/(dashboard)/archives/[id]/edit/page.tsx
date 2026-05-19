@@ -341,6 +341,9 @@ export default function EditArchivePage() {
       return;
     }
 
+    const generateNAId = () =>
+      `NA${Math.floor(Math.random() * 1e8).toString().padStart(8, "0")}`;
+
     const cleanPerson = (p: {
       nombresCompletos: string;
       isPasaporte?: boolean;
@@ -349,11 +352,7 @@ export default function EditArchivePage() {
       nacionalidad: string;
     }) => ({
       nombresCompletos: p.nombresCompletos,
-      ...(p.isPasaporte && p.pasaporte
-        ? { cedulaORuc: p.pasaporte }
-        : p.cedulaORuc
-        ? { cedulaORuc: p.cedulaORuc }
-        : {}),
+      cedulaORuc: !p.isPasaporte && p.cedulaORuc ? p.cedulaORuc : generateNAId(),
       nacionalidad: p.nacionalidad,
     });
 
