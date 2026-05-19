@@ -75,33 +75,19 @@ const TYPE_COLORS: Record<ArchiveType, string> = {
 
 export default function ArchivesPage() {
   const router = useRouter();
-  const { archives, isLoading, isError, fetchArchives, fetchAllArchives, deleteArchive, clearArchives } = useArchives();
+  const { archives, isLoading, isError, fetchAllArchives, deleteArchive, clearArchives } = useArchives();
   const { canEditArchive, canDeleteArchive, canCreateArchive } = usePermissions();
 
   const [activeType, setActiveType] = useState<ArchiveType | "">("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ArchiveStatus | "">("");
-  // serverPage: used when Todos (no type filter) — server paginates
-  const [serverPage, setServerPage] = useState(1);
-  // clientPage: used when a type tab is active — frontend paginates
   const [clientPage, setClientPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(() => {
-    if (activeType || search) {
-      // Fetch all pages and filter client-side when a type tab is active or a search
-      // term is present — backend doesn't support type as query param and doesn't
-      // search nested grantor/beneficiary fields.
-      fetchAllArchives({ status: status || undefined });
-    } else {
-      fetchArchives({
-        status: status || undefined,
-        page: serverPage,
-        limit: PAGE_LIMIT,
-      });
-    }
-  }, [fetchArchives, fetchAllArchives, search, activeType, status, serverPage]);
+    fetchAllArchives({ status: status || undefined });
+  }, [fetchAllArchives, status]);
 
   useEffect(() => {
     const timer = setTimeout(load, 300);
@@ -117,7 +103,6 @@ export default function ArchivesPage() {
     clearArchives();
     setActiveType(type);
     setClientPage(1);
-    setServerPage(1);
   };
 
   // Client-side filtering and pagination
@@ -157,22 +142,11 @@ export default function ArchivesPage() {
   }, [archives?.data, activeType, search]);
 
   const displayData = useMemo(() => {
-    if (!activeType && !search) return filteredData;
     const start = (clientPage - 1) * PAGE_LIMIT;
     return filteredData.slice(start, start + PAGE_LIMIT);
-  }, [activeType, search, filteredData, clientPage]);
+  }, [filteredData, clientPage]);
 
   const paginationInfo = useMemo(() => {
-    if (!activeType && !search) {
-      if (!archives || archives.totalPages <= 1) return null;
-      return {
-        page: archives.page,
-        totalPages: archives.totalPages,
-        total: archives.total,
-        limit: archives.limit,
-        onPageChange: setServerPage,
-      };
-    }
     const total = filteredData.length;
     const totalPages = Math.ceil(total / PAGE_LIMIT);
     if (totalPages <= 1) return null;
@@ -345,7 +319,7 @@ export default function ArchivesPage() {
             placeholder="Buscar por código, nombre o cédula..."
             className="pl-9"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setServerPage(1); }}
+            onChange={(e) => { setSearch(e.target.value); setClientPage(1); }}
           />
         </div>
       </div>

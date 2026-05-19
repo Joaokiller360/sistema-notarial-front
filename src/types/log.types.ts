@@ -1,8 +1,5 @@
 export interface Log {
   id: string;
-  action: string;
-  entity?: string;
-  entityId?: string;
   userId?: string;
   user?: {
     id: string;
@@ -10,9 +7,15 @@ export interface Log {
     lastName: string;
     email: string;
   };
-  details?: string;
-  ipAddress?: string;
+  action: string;
+  endpoint?: string;
+  method?: string;
+  resource?: string;
+  resourceId?: string;
+  details?: Record<string, unknown> | string;
+  ip?: string;
   userAgent?: string;
+  statusCode?: number;
   createdAt: string;
 }
 
