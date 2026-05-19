@@ -7,8 +7,8 @@ import { FolderArchive, Users, UserRound, Plus, Newspaper, CalendarDays, ImageOf
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { useAuthStore } from "@/store";
-import { archivesService, usersService, clientsService, newsService } from "@/services";
-import type { News } from "@/types";
+import { archivesService, usersService, newsService } from "@/services";
+import type { Archive, News } from "@/types";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Administrador",
@@ -46,19 +46,38 @@ export default function DashboardPage() {
     (async () => {
       setIsLoading(true);
       try {
-        const [allArchives, allClients, allUsers, news] =
+        const [archivesFirst, allUsers, news] =
           await Promise.allSettled([
-            archivesService.getAll({ page: 1, limit: 1 }),
-            clientsService.getAll({ page: 1, limit: 1 }),
+            archivesService.getAll({ page: 1, limit: 100 }),
             usersService.getAll({ page: 1, limit: 1 }),
             newsService.getAll({ page: 1, limit: 3 }),
           ]);
 
+        let totalArchives = 0;
+        let totalClients = 0;
+
+        if (archivesFirst.status === "fulfilled") {
+          totalArchives = archivesFirst.value.total;
+          let collected: Archive[] = [...archivesFirst.value.data];
+          const totalPages = archivesFirst.value.totalPages;
+          if (totalPages > 1) {
+            const remaining = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+            const results = await Promise.all(
+              remaining.map((p) => archivesService.getAll({ page: p, limit: 100 }))
+            );
+            for (const r of results) collected = collected.concat(r.data);
+          }
+          const keys = new Set<string>();
+          for (const a of collected) {
+            for (const g of a.grantors) keys.add(g.cedulaORuc ?? g.nombresCompletos);
+            for (const b of a.beneficiaries) keys.add(b.cedulaORuc ?? b.nombresCompletos);
+          }
+          totalClients = keys.size;
+        }
+
         setStats({
-          totalArchives:
-            allArchives.status === "fulfilled" ? allArchives.value.total : 0,
-          totalClients:
-            allClients.status === "fulfilled" ? allClients.value.total : 0,
+          totalArchives,
+          totalClients,
           totalUsers:
             allUsers.status === "fulfilled" ? allUsers.value.total : 0,
         });

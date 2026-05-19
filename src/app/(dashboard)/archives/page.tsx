@@ -147,6 +147,12 @@ export default function ArchivesPage() {
       );
     }
 
+    data = data.slice().sort((a, b) => {
+      const yearA = parseInt(a.code.substring(0, 4), 10) || 0;
+      const yearB = parseInt(b.code.substring(0, 4), 10) || 0;
+      return yearB - yearA;
+    });
+
     return data;
   }, [archives?.data, activeType, search]);
 
