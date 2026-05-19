@@ -147,6 +147,7 @@ function NewArchiveForm() {
       id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
       file,
       preview: URL.createObjectURL(file),
+      rotation: 0,
     }))
   );
   const [photoDragIndex, setPhotoDragIndex] = useState<number | null>(null);
