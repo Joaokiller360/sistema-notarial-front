@@ -100,7 +100,6 @@ export default function ArchivesPage() {
   }, [activeType, search, status]);
 
   const handleTabChange = (type: ArchiveType | "") => {
-    clearArchives();
     setActiveType(type);
     setClientPage(1);
   };
