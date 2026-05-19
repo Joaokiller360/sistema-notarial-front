@@ -7,7 +7,7 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Save, FileText, Users, UserCheck, ImagePlus, X, GripVertical } from "lucide-react";
+import { ArrowLeft, Save, FileText, Users, UserCheck, ImagePlus, X, GripVertical, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -54,6 +54,7 @@ interface PhotoItem {
   id: string;
   file: File;
   preview: string;
+  rotation: 0 | 90 | 180 | 270;
 }
 
 const personSchema = z
@@ -183,6 +184,7 @@ function NewArchiveForm() {
         id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
         file,
         preview: URL.createObjectURL(file),
+        rotation: 0,
       });
     }
     if (valid.length) {
@@ -356,13 +358,35 @@ function NewArchiveForm() {
       nacionalidad: p.nacionalidad,
     });
 
+    const applyRotationToFile = (file: File, deg: 0 | 90 | 180 | 270): Promise<File> => {
+      if (deg === 0) return Promise.resolve(file);
+      return createImageBitmap(file).then(
+        (bitmap) => new Promise((resolve, reject) => {
+          const swap = deg === 90 || deg === 270;
+          const canvas = document.createElement("canvas");
+          canvas.width = swap ? bitmap.height : bitmap.width;
+          canvas.height = swap ? bitmap.width : bitmap.height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate((deg * Math.PI) / 180);
+          ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+          bitmap.close?.();
+          canvas.toBlob((blob) => {
+            if (!blob) { reject(new Error("canvas.toBlob failed")); return; }
+            resolve(new File([blob], file.name, { type: file.type }));
+          }, file.type);
+        })
+      );
+    };
+
     // Generate PDF locally first — archive is not created until PDF is ready
     let photoPdf: File | undefined;
     if (pdfMode === "photos") {
       setIsGenerating(true);
       try {
         const { generatePdfFromImages } = await import("@/utils/generatePdfFromImages");
-        photoPdf = await generatePdfFromImages(photoItems.map((i) => i.file));
+        const rotatedFiles = await Promise.all(photoItems.map((i) => applyRotationToFile(i.file, i.rotation)));
+        photoPdf = await generatePdfFromImages(rotatedFiles);
       } catch {
         toast.error("No se pudo generar el PDF. Intenta de nuevo.");
         setIsGenerating(false);
@@ -682,9 +706,18 @@ function NewArchiveForm() {
                     {photoItems.length > 0 && (
                       <>
                         <div className="flex items-center justify-between">
-                          <p className="text-[11px] text-muted-foreground">
-                            Arrastra para reordenar
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[11px] text-muted-foreground">Arrastra para reordenar</p>
+                            <button
+                              type="button"
+                              onClick={() => setPhotoItems((prev) => prev.map((item) => ({ ...item, rotation: ((item.rotation + 90) % 360) as 0 | 90 | 180 | 270 })))}
+                              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+                              title="Rotar todas 90°"
+                            >
+                              <RotateCw className="w-3 h-3" />
+                              Rotar todas
+                            </button>
+                          </div>
                           <Badge
                             variant="outline"
                             className={cn(
@@ -737,7 +770,8 @@ function NewArchiveForm() {
                               <img
                                 src={item.preview}
                                 alt={item.file.name}
-                                className="w-full aspect-[3/4] object-cover"
+                                className="w-full aspect-[3/4] object-cover transition-transform duration-200"
+                                style={{ transform: `rotate(${item.rotation}deg)` }}
                                 draggable={false}
                               />
                             </div>

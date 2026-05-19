@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, X, FileOutput, GripVertical } from "lucide-react";
+import { ImagePlus, X, FileOutput, GripVertical, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ interface ImageItem {
   id: string;
   file: File;
   preview: string;
+  rotation: 0 | 90 | 180 | 270;
 }
 
 interface PhotoToPdfUploaderProps {
@@ -60,6 +61,7 @@ export function PhotoToPdfUploader({ archiveId }: PhotoToPdfUploaderProps) {
         id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
         file: normalized,
         preview: URL.createObjectURL(normalized),
+        rotation: 0,
       });
     }
 
@@ -123,13 +125,39 @@ export function PhotoToPdfUploader({ archiveId }: PhotoToPdfUploaderProps) {
     setOverIndex(null);
   };
 
+  const applyRotationToFile = (file: File, deg: 0 | 90 | 180 | 270): Promise<File> => {
+    if (deg === 0) return Promise.resolve(file);
+    return createImageBitmap(file).then(
+      (bitmap) =>
+        new Promise((resolve, reject) => {
+          const swap = deg === 90 || deg === 270;
+          const canvas = document.createElement("canvas");
+          canvas.width = swap ? bitmap.height : bitmap.width;
+          canvas.height = swap ? bitmap.width : bitmap.height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate((deg * Math.PI) / 180);
+          ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+          bitmap.close?.();
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) { reject(new Error("canvas.toBlob failed")); return; }
+              resolve(new File([blob], file.name, { type: file.type }));
+            },
+            file.type,
+          );
+        })
+    );
+  };
+
   // ── Generate PDF ──────────────────────────────────────────────────────────
 
   const handleGenerate = async () => {
     if (items.length === 0) return;
     setIsGenerating(true);
     try {
-      await archivesService.generatePdf(archiveId, items.map((i) => i.file));
+      const files = await Promise.all(items.map((i) => applyRotationToFile(i.file, i.rotation)));
+      await archivesService.generatePdf(archiveId, files);
       toast.success("PDF generado correctamente.");
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -192,9 +220,18 @@ export function PhotoToPdfUploader({ archiveId }: PhotoToPdfUploaderProps) {
         {items.length > 0 && (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Arrastra para reordenar
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Arrastra para reordenar</p>
+                <button
+                  type="button"
+                  onClick={() => setItems((prev) => prev.map((item) => ({ ...item, rotation: ((item.rotation + 90) % 360) as 0 | 90 | 180 | 270 })))}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                  title="Rotar todas 90°"
+                >
+                  <RotateCw className="w-3 h-3" />
+                  Rotar todas
+                </button>
+              </div>
               <Badge
                 variant="outline"
                 className={cn("text-xs", atLimit && "border-destructive/40 text-destructive")}
@@ -240,7 +277,8 @@ export function PhotoToPdfUploader({ archiveId }: PhotoToPdfUploaderProps) {
                   <img
                     src={item.preview}
                     alt={item.file.name}
-                    className="w-full aspect-[3/4] object-cover"
+                    className="w-full aspect-[3/4] object-cover transition-transform duration-200"
+                    style={{ transform: `rotate(${item.rotation}deg)` }}
                     draggable={false}
                   />
                   <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm px-1.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
