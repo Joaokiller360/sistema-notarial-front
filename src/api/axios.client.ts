@@ -158,3 +158,69 @@ apiFormClient.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
+apiFormClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      const refreshToken = tokenUtils.getRefreshToken();
+      const userId = getUserIdFromToken();
+
+      if (!refreshToken || !userId) {
+        tokenUtils.clearTokens();
+        if (typeof window !== "undefined") window.location.href = "/login";
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return apiFormClient(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const response = await axios.post(`${API_URL}/auth/refresh`, {
+          userId,
+          refreshToken,
+        });
+
+        const responseData = response.data?.data || response.data;
+        const { accessToken, refreshToken: newRefreshToken } = responseData;
+
+        tokenUtils.setTokens(accessToken, newRefreshToken);
+        processQueue(null, accessToken);
+
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return apiFormClient(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        tokenUtils.clearTokens();
+        if (typeof window !== "undefined") window.location.href = "/login";
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    if (error.response) {
+      const data = error.response.data as Record<string, unknown> | undefined;
+      if (data && typeof data.message === "string") {
+        data.message = translateError(data.message);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);

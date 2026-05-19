@@ -2,18 +2,15 @@ import type { NextConfig } from "next";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ||
-  "https://dev.joaobarres.dev";
+  "https://developer.joaobarres.dev";
 
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**.s3.amazonaws.com",
-      },
-      {
-        protocol: "https",
-        hostname: "**.s3.*.amazonaws.com",
+        hostname: "developer.joaobarres.dev",
+        pathname: "/uploads/**",
       },
     ],
   },
