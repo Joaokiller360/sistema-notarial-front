@@ -63,9 +63,19 @@ export default function ArchiveDetailPage() {
     setPdfLoading(mode);
     try {
       if (mode === "view") {
-        const { url, downloadRestricted } = await archivesService.getPdfUrl(archive.pdfUrl);
+        // La URL firmada del backend viene con disposición "attachment" por
+        // defecto (solo es "inline" si el usuario tiene pdfDownloadDisabled),
+        // así que abrirla directamente dispara una descarga en vez de
+        // previsualizar. Se trae como blob y se abre como object URL local,
+        // que el navegador siempre muestra con su visor de PDF integrado.
+        const [{ downloadRestricted }, blob] = await Promise.all([
+          archivesService.getPdfUrl(archive.pdfUrl),
+          archivesService.downloadPdf(archive.pdfUrl),
+        ]);
         if (downloadRestricted) setServerPdfRestricted(true);
-        window.open(url, "_blank", "noopener,noreferrer");
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank", "noopener,noreferrer");
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
       } else {
         const blob = await archivesService.downloadPdf(archive.pdfUrl);
         const blobUrl = URL.createObjectURL(blob);

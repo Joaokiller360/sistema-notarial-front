@@ -138,6 +138,16 @@ export default function ArchivesPage() {
     }
   };
 
+  // Revoca la blob URL de vista previa anterior cada vez que cambia o al desmontar
+  // (la URL firmada del backend viene con disposición "attachment" por defecto,
+  // así que navegar/iframear esa URL directamente dispara una descarga en vez de
+  // previsualizar; por eso se trae como blob y se muestra con un object URL local).
+  useEffect(() => {
+    return () => {
+      if (pdfViewUrl) URL.revokeObjectURL(pdfViewUrl);
+    };
+  }, [pdfViewUrl]);
+
   const openPdf = async (row: Archive) => {
     if (creatingCodes.includes(row.code)) {
       toast.info("El archivo aún se está creando. Espera a que termine.");
@@ -154,9 +164,12 @@ export default function ArchivesPage() {
         setPdfOpen(false);
         return;
       }
-      const { url, downloadRestricted } = await archivesService.getPdfUrl(key);
+      const [{ downloadRestricted }, blob] = await Promise.all([
+        archivesService.getPdfUrl(key),
+        archivesService.downloadPdf(key),
+      ]);
       if (downloadRestricted) setServerPdfRestricted(true);
-      setPdfViewUrl(url);
+      setPdfViewUrl(URL.createObjectURL(blob));
     } catch {
       toast.error("No se pudo cargar el documento");
       setPdfOpen(false);
