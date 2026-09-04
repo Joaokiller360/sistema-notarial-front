@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store";
-import { authService, usersService } from "@/services";
+import { authService } from "@/services";
 import { tokenUtils } from "@/utils/token";
 import type { LoginRequest } from "@/types";
 
@@ -61,7 +61,9 @@ export function useAuth() {
     if (!user) return;
     setIsLoading(true);
     try {
-      const updated = await usersService.update(user.id, payload);
+      // /auth/me es self-service (solo requiere estar autenticado); PATCH /users/:id
+      // exige el permiso users:update, que la mayoría de roles no tiene.
+      const updated = await authService.updateMe(payload);
       setUser({
         ...user,
         ...updated,
