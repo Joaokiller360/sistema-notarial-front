@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/common/PageHeader";
 import { UafeForm } from "@/components/forms/UafeForm";
 import { useAuthStore } from "@/store";
-import { saveUafe, type UafeFormData } from "@/lib/uafe-forms";
+import { type UafeFormData } from "@/lib/uafe-forms";
+import { uafeFormsService } from "@/services";
 import { getTemplate } from "@/lib/form-templates";
 
 export default function NuevoFormularioPage() {
   const router = useRouter();
   const params = useParams<{ templateId: string }>();
   const template = params?.templateId ? getTemplate(params.templateId) : undefined;
+  const [submitting, setSubmitting] = useState(false);
 
   const user = useAuthStore((s) => s.user);
   const fullName =
@@ -37,17 +39,24 @@ export default function NuevoFormularioPage() {
 
   if (!template || !initial) return null;
 
-  const handleSave = (data: UafeFormData) => {
-    const sub = saveUafe({
-      data,
-      filledByName: fullName,
-      filledByEmail: user?.email ?? "",
-      filledByRole: user?.roles?.[0] ?? "",
-      templateId: template.id,
-      templateName: template.name,
-    });
-    toast.success("Formulario guardado");
-    router.push(`/forms/uafe/${sub.id}`);
+  const handleSave = async (data: UafeFormData) => {
+    setSubmitting(true);
+    try {
+      // filledByName/Email/Role los completa el backend a partir del token.
+      const created = await uafeFormsService.create({
+        templateId: template.id,
+        templateName: template.name,
+        data,
+      });
+      toast.success("Formulario guardado");
+      // ?edit=1 abre el detalle ya en modo edición para poder adjuntar comprobantes.
+      router.push(`/forms/uafe/${created.id}?edit=1`);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || "No se pudo guardar el formulario");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -68,6 +77,7 @@ export default function NuevoFormularioPage() {
 
       <UafeForm
         initial={initial}
+        submitting={submitting}
         headerNote={`Plantilla: ${template.name} — llenado por: ${fullName}`}
         onSave={handleSave}
       />

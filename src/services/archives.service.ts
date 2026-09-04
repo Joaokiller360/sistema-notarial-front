@@ -84,14 +84,16 @@ export const archivesService = {
     return data.data;
   },
 
-  getPdfUrl: async (key: string): Promise<string> => {
+  getPdfUrl: async (key: string): Promise<{ url: string; downloadRestricted: boolean }> => {
     const response = await apiClient.get("/files/view-url", { params: { key } });
     const body = response.data;
-    // { success, data: { viewUrl, expiresIn } }
-    const url: string =
-      body?.data?.viewUrl ?? body?.viewUrl ?? body?.data?.url ?? body?.url;
+    // { success, data: { viewUrl, expiresIn, downloadRestricted } }
+    const payload = body?.data ?? body;
+    const url: string = payload?.viewUrl ?? payload?.url;
     if (typeof url !== "string" || !url) throw new Error("URL no disponible");
-    return url;
+    // El backend decide en el server si la URL firmada fuerza descarga o no;
+    // úsalo además del flag local del usuario (que puede quedar desactualizado).
+    return { url, downloadRestricted: !!payload?.downloadRestricted };
   },
 
   downloadPdf: async (key: string): Promise<Blob> => {

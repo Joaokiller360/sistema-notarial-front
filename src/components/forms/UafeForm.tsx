@@ -5,7 +5,7 @@ import { Printer, Save, X, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { emptyUafeData, type UafeFormData } from "@/lib/uafe-forms";
-import { fileToCompressedDataUrl } from "@/lib/image-compress";
+import { uafeFormsService, type UafeComprobante } from "@/services";
 import { NacionalidadSelect } from "@/components/common/NacionalidadSelect";
 import { ComboBox } from "@/components/common/ComboBox";
 import { MONEDAS, nombreMoneda } from "@/constants/monedas.const";
@@ -365,6 +365,14 @@ interface UafeFormProps {
   submitting?: boolean;
   headerNote?: string;
   onSave?: (data: UafeFormData) => void;
+  /** Id del registro ya guardado en `/uafe-forms`. Sin esto los comprobantes
+   *  no se pueden subir (el endpoint de comprobantes requiere un id existente). */
+  uafeFormId?: string;
+  /** Comprobantes ya subidos (URLs firmadas) para este registro. */
+  comprobantes?: UafeComprobante[];
+  /** Se dispara cuando se sube o borra un comprobante, para que el padre
+   *  mantenga sincronizado su propio estado del registro. */
+  onComprobantesChange?: (list: UafeComprobante[]) => void;
 }
 
 export function UafeForm({
@@ -373,16 +381,18 @@ export function UafeForm({
   submitting = false,
   headerNote,
   onSave,
+  uafeFormId,
+  comprobantes: initialComprobantes,
+  onComprobantesChange,
 }: UafeFormProps) {
   const [d, setD] = useState<UafeFormData>(() => {
-    // Normaliza envíos antiguos de localStorage (campos nuevos / renombrados).
+    // Normaliza envíos antiguos (campos nuevos / renombrados).
     const base = { ...emptyUafeData(), ...(initial ?? {}) } as UafeFormData & {
       matrizadorProtocolo?: boolean;
       matrizadorDiligencial?: boolean;
     };
     return {
       ...base,
-      comprobantes: Array.isArray(base.comprobantes) ? base.comprobantes : [],
       moneda: base.moneda || "USD",
       fechaPago: base.fechaPago ?? "",
       nivelRiesgo: base.nivelRiesgo ?? "",
@@ -395,7 +405,9 @@ export function UafeForm({
             : ""),
     };
   });
+  const [comprobantes, setComprobantes] = useState<UafeComprobante[]>(initialComprobantes ?? []);
   const [comprobanteError, setComprobanteError] = useState("");
+  const [comprobanteUploading, setComprobanteUploading] = useState(false);
 
   const generado = new Date().toLocaleDateString("es-EC", {
     day: "2-digit",
@@ -445,38 +457,62 @@ export function UafeForm({
     };
   }, []);
 
-  const comprobantes = d.comprobantes ?? [];
-
   const addComprobantes = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setComprobanteError("");
+    if (!uafeFormId) {
+      setComprobanteError("Guarda el formulario primero para poder adjuntar comprobantes.");
+      return;
+    }
     const room = MAX_COMPROBANTES - comprobantes.length;
     if (room <= 0) {
       setComprobanteError(`Máximo ${MAX_COMPROBANTES} comprobantes.`);
       return;
     }
     const all = Array.from(files);
-    const picked = all.slice(0, room);
-    const added: string[] = [];
-    for (const f of picked) {
-      if (!f.type.startsWith("image/")) {
+    const valid: File[] = [];
+    for (const f of all) {
+      if (!/^image\/(jpe?g|png)$/.test(f.type)) {
         setComprobanteError("Solo se aceptan imágenes (JPG o PNG).");
         continue;
       }
-      try {
-        added.push(await fileToCompressedDataUrl(f));
-      } catch {
-        setComprobanteError("No se pudo procesar alguna imagen.");
+      if (f.size > 10 * 1024 * 1024) {
+        setComprobanteError("Cada imagen debe pesar máximo 10MB.");
+        continue;
       }
+      valid.push(f);
     }
-    if (added.length) set("comprobantes", [...comprobantes, ...added]);
-    if (all.length > room) {
-      setComprobanteError(`Solo se agregaron ${room}: el máximo es ${MAX_COMPROBANTES}.`);
+    const picked = valid.slice(0, room);
+    if (picked.length === 0) return;
+
+    setComprobanteUploading(true);
+    try {
+      const uploaded = await uafeFormsService.uploadComprobantes(uafeFormId, picked);
+      const next = [...comprobantes, ...uploaded];
+      setComprobantes(next);
+      onComprobantesChange?.(next);
+      if (all.length > room) {
+        setComprobanteError(`Solo se agregaron ${room}: el máximo es ${MAX_COMPROBANTES}.`);
+      }
+    } catch {
+      setComprobanteError("No se pudo subir el comprobante. Intenta de nuevo.");
+    } finally {
+      setComprobanteUploading(false);
     }
   };
 
-  const removeComprobante = (idx: number) =>
-    set("comprobantes", comprobantes.filter((_, i) => i !== idx));
+  const removeComprobante = async (item: UafeComprobante) => {
+    if (!uafeFormId) return;
+    setComprobanteError("");
+    try {
+      await uafeFormsService.deleteComprobante(uafeFormId, item.id);
+      const next = comprobantes.filter((c) => c.id !== item.id);
+      setComprobantes(next);
+      onComprobantesChange?.(next);
+    } catch {
+      setComprobanteError("No se pudo eliminar el comprobante.");
+    }
+  };
 
   const setCuenta = (
     which: "cuentaOrigen" | "cuentaDestino",
@@ -1619,24 +1655,30 @@ export function UafeForm({
               </span>
             </div>
 
-            {!dis && (
+            {!dis && !uafeFormId && (
+              <p className="uafe-no-print mb-4 text-xs text-muted-foreground rounded-md border border-dashed border-border p-3">
+                Guarda el formulario para poder adjuntar comprobantes.
+              </p>
+            )}
+
+            {!dis && uafeFormId && (
               <div className="uafe-no-print mb-4">
                 <label
                   className={cn(
                     "inline-flex items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm font-medium",
-                    comprobantes.length >= MAX_COMPROBANTES
+                    comprobantes.length >= MAX_COMPROBANTES || comprobanteUploading
                       ? "opacity-50 cursor-not-allowed"
                       : "cursor-pointer hover:border-primary/50 hover:bg-muted/30"
                   )}
                 >
                   <ImagePlus className="w-4 h-4" />
-                  Agregar comprobantes
+                  {comprobanteUploading ? "Subiendo..." : "Agregar comprobantes"}
                   <input
                     type="file"
                     accept="image/jpeg,image/png"
                     multiple
                     className="hidden"
-                    disabled={comprobantes.length >= MAX_COMPROBANTES}
+                    disabled={comprobantes.length >= MAX_COMPROBANTES || comprobanteUploading}
                     onChange={(e) => {
                       void addComprobantes(e.target.files);
                       e.target.value = "";
@@ -1644,8 +1686,8 @@ export function UafeForm({
                   />
                 </label>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Entre 1 y {MAX_COMPROBANTES} fotos (JPG o PNG). Se reduce el tamaño automáticamente y
-                  se anexan al final del PDF, en hojas aparte.
+                  Entre 1 y {MAX_COMPROBANTES} fotos (JPG o PNG, máx. 10MB c/u). Se anexan al final
+                  del PDF, en hojas aparte.
                 </p>
                 {comprobanteError && (
                   <p className="mt-1 text-[11px] text-destructive">{comprobanteError}</p>
@@ -1655,14 +1697,14 @@ export function UafeForm({
 
             {comprobantes.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {comprobantes.map((src, i) => (
+                {comprobantes.map((c, i) => (
                   <figure
-                    key={i}
+                    key={c.id}
                     className="uafe-comprobante relative rounded-md border border-border overflow-hidden bg-white"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={src}
+                      src={c.url}
                       alt={`Comprobante ${i + 1}`}
                       className="w-full h-44 object-contain bg-white"
                     />
@@ -1673,7 +1715,7 @@ export function UafeForm({
                       <button
                         type="button"
                         aria-label={`Quitar comprobante ${i + 1}`}
-                        onClick={() => removeComprobante(i)}
+                        onClick={() => removeComprobante(c)}
                         className="uafe-no-print absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground hover:border-destructive/50 hover:text-destructive"
                       >
                         <X className="h-3 w-3" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -13,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
+import { Pagination } from "@/components/common/Pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { NacionalidadSelect } from "@/components/common/NacionalidadSelect";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +36,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { FORM_TEMPLATES } from "@/lib/form-templates";
-import { deleteUafe, listUafe, type UafeSubmission } from "@/lib/uafe-forms";
+import { uafeFormsService, type UafeForm } from "@/services";
 
 const ACTO_LABEL: Record<string, string> = {
   compraventa_inmueble: "Compraventa de inmueble",
@@ -73,61 +76,67 @@ const TRAMITE_BADGE: Record<string, string> = {
   diligencia: "bg-blue-500/10 text-blue-500 border-blue-500/30",
 };
 
+const PAGE_LIMIT = 15;
+
 export default function FormsPage() {
   const router = useRouter();
 
-  const [items, setItems] = useState<UafeSubmission[]>([]);
+  const [items, setItems] = useState<UafeForm[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [natFilter, setNatFilter] = useState("");
+  const [riesgoFilter, setRiesgoFilter] = useState("");
+  const [page, setPage] = useState(1);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
-  const refresh = () => setItems(listUafe());
-
-  useEffect(() => {
-    let cancelled = false;
-    // Lectura async para no hacer setState síncrono dentro del efecto.
-    Promise.resolve().then(() => {
-      if (cancelled) return;
-      setItems(listUafe());
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const nacionalidades = useMemo(() => {
-    const set = new Set<string>();
-    items.forEach((s) => {
-      const n = s.data.nacionalidad?.trim();
-      if (n) set.add(n);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
-  }, [items]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return items.filter((s) => {
-      if (natFilter && s.data.nacionalidad !== natFilter) return false;
-      if (!q) return true;
-      return (
-        s.data.nombres.toLowerCase().includes(q) ||
-        s.filledByName.toLowerCase().includes(q) ||
-        s.data.numeroId.toLowerCase().includes(q)
-      );
-    });
-  }, [items, search, natFilter]);
-
-  const [deleteTarget, setDeleteTarget] = useState<UafeSubmission | null>(null);
-
-  const confirmDelete = () => {
-    if (!deleteTarget) return;
-    deleteUafe(deleteTarget.id);
-    setDeleteTarget(null);
-    refresh();
-    toast.success("Formulario UAFE eliminado");
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const res = await uafeFormsService.getAll({
+        page,
+        limit: PAGE_LIMIT,
+        search: search.trim() || undefined,
+        nacionalidad: natFilter || undefined,
+        nivelRiesgo: (riesgoFilter as "" | "bajo" | "medio" | "alto" | "critico") || undefined,
+      });
+      setItems(res.data);
+      setTotal(res.total);
+      setTotalPages(res.totalPages);
+    } catch {
+      toast.error("No se pudieron cargar los formularios");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const columns: Column<UafeSubmission>[] = [
+  // Debounce de búsqueda + refetch cuando cambian filtros/página
+  useEffect(() => {
+    const timer = setTimeout(load, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, search, natFilter, riesgoFilter]);
+
+  const [deleteTarget, setDeleteTarget] = useState<UafeForm | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await uafeFormsService.delete(deleteTarget.id);
+      toast.success("Formulario UAFE eliminado");
+      setDeleteTarget(null);
+      load();
+    } catch {
+      toast.error("No se pudo eliminar el formulario");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const columns: Column<UafeForm>[] = [
     {
       key: "nivel",
       label: "Nivel",
@@ -249,32 +258,69 @@ export default function FormsPage() {
             placeholder="Buscar por compareciente, identificación o quien llenó..."
             className="pl-9"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <div className="w-full sm:w-56">
+          <NacionalidadSelect
+            value={natFilter}
+            onChange={(v) => {
+              setNatFilter(v);
+              setPage(1);
+            }}
           />
         </div>
         <select
-          value={natFilter}
-          onChange={(e) => setNatFilter(e.target.value)}
-          className="h-9 w-full sm:w-60 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/40"
+          value={riesgoFilter}
+          onChange={(e) => {
+            setRiesgoFilter(e.target.value);
+            setPage(1);
+          }}
+          className="h-9 w-full sm:w-48 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/40"
         >
-          <option value="">Todas las nacionalidades</option>
-          {nacionalidades.map((n) => (
-            <option key={n} value={n}>{n}</option>
-          ))}
+          <option value="">Todos los niveles de riesgo</option>
+          <option value="bajo">Bajo</option>
+          <option value="medio">Medio</option>
+          <option value="alto">Alto</option>
+          <option value="critico">Crítico</option>
         </select>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filtered}
-        keyExtractor={(row) => row.id}
-        emptyTitle="No hay formularios"
-        emptyDescription="Aún no se ha generado ningún formulario UAFE. Usa “Nuevo formulario UAFE”."
-      />
+      {isLoading ? (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <DataTable
+            columns={columns}
+            data={items}
+            keyExtractor={(row) => row.id}
+            emptyTitle="No hay formularios"
+            emptyDescription="Aún no se ha generado ningún formulario UAFE. Usa “Nuevo formulario”."
+          />
+          {totalPages > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              limit={PAGE_LIMIT}
+              onPageChange={setPage}
+            />
+          )}
+        </div>
+      )}
 
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <ClipboardList className="w-3.5 h-3.5" />
-        Los formularios se guardan en este navegador. Pendiente conectar backend.
+        {total.toLocaleString()} formulario{total !== 1 ? "s" : ""} registrado{total !== 1 ? "s" : ""}.
       </p>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
@@ -295,12 +341,15 @@ export default function FormsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="cursor-pointer" disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              disabled={isDeleting}
               className="bg-destructive cursor-pointer text-destructive-foreground hover:bg-destructive/90"
             >
-              Eliminar
+              {isDeleting ? "Eliminando..." : "Eliminar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

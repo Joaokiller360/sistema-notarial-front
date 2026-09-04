@@ -49,7 +49,9 @@ export default function ArchiveDetailPage() {
   const router = useRouter();
   const { archive, isLoading, fetchArchive } = useArchives();
   const { canEditArchive, user } = usePermissions();
-  const pdfRestricted = !!user?.pdfDownloadDisabled;
+  // El store local puede estar desactualizado; view-url trae el flag real del servidor.
+  const [serverPdfRestricted, setServerPdfRestricted] = useState(false);
+  const pdfRestricted = !!user?.pdfDownloadDisabled || serverPdfRestricted;
   const [pdfLoading, setPdfLoading] = useState<"view" | "download" | null>(null);
 
   const handlePdf = async (mode: "view" | "download") => {
@@ -61,7 +63,8 @@ export default function ArchiveDetailPage() {
     setPdfLoading(mode);
     try {
       if (mode === "view") {
-        const url = await archivesService.getPdfUrl(archive.pdfUrl);
+        const { url, downloadRestricted } = await archivesService.getPdfUrl(archive.pdfUrl);
+        if (downloadRestricted) setServerPdfRestricted(true);
         window.open(url, "_blank", "noopener,noreferrer");
       } else {
         const blob = await archivesService.downloadPdf(archive.pdfUrl);

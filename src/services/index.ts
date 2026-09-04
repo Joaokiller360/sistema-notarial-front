@@ -9,7 +9,15 @@ export { newsService } from "./news.service";
 export { notaryService } from "./notary.service";
 export { notificationsService } from "./notifications.service";
 export { tasksService } from "./tasks.service";
+export { uafeFormsService } from "./uafe-forms.service";
 export type { RoleItem } from "./roles.service";
 export type { SystemConfig } from "./system.service";
 export type { PaginatedNotifications } from "./notifications.service";
 export type { PaginatedTasks } from "./tasks.service";
+export type {
+  UafeForm,
+  UafeComprobante,
+  UafeFormFilters,
+  PaginatedUafeForms,
+  CreateUafeFormPayload,
+} from "./uafe-forms.service";

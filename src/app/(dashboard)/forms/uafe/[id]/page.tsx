@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/common/PageHeader";
 import { UafeForm } from "@/components/forms/UafeForm";
 import { useAuthStore } from "@/store";
-import { getUafe, saveUafe, type UafeFormData, type UafeSubmission } from "@/lib/uafe-forms";
+import { type UafeFormData } from "@/lib/uafe-forms";
+import { uafeFormsService, type UafeForm as UafeFormRecord, type UafeComprobante } from "@/services";
 
-export default function UafeFormDetailPage() {
+function UafeFormDetail() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const id = params?.id;
 
   const user = useAuthStore((s) => s.user);
@@ -24,17 +26,37 @@ export default function UafeFormDetailPage() {
     "Usuario"
   ).toLocaleUpperCase("es");
 
-  const [sub, setSub] = useState<UafeSubmission | null>(null);
+  const [sub, setSub] = useState<UafeFormRecord | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
+  const [editing, setEditing] = useState(searchParams?.get("edit") === "1");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!id) return;
     let cancelled = false;
     // Lectura async para no hacer setState síncrono dentro del efecto.
     Promise.resolve().then(() => {
-      if (cancelled || !id) return;
-      setSub(getUafe(id) ?? null);
-      setLoading(false);
+      if (cancelled) return;
+      setLoading(true);
+      setNotFound(false);
+      setForbidden(false);
+      uafeFormsService
+        .getById(id)
+        .then((data) => {
+          if (cancelled) return;
+          setSub(data);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          if (status === 403) setForbidden(true);
+          else setNotFound(true);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
     });
     return () => {
       cancelled = true;
@@ -45,12 +67,12 @@ export default function UafeFormDetailPage() {
     return <p className="text-sm text-muted-foreground">Cargando formulario...</p>;
   }
 
-  if (!sub) {
+  if (forbidden) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Formulario no encontrado" />
+        <PageHeader title="Sin acceso" />
         <p className="text-sm text-muted-foreground">
-          Este formulario no existe o fue creado en otro navegador.
+          No tienes permiso para ver este formulario.
         </p>
         <Button variant="outline" className="cursor-pointer" onClick={() => router.push("/forms")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -60,19 +82,36 @@ export default function UafeFormDetailPage() {
     );
   }
 
-  const handleSave = (data: UafeFormData) => {
-    const updated = saveUafe({
-      id: sub.id,
-      data,
-      filledByName: sub.filledByName,
-      filledByEmail: sub.filledByEmail,
-      filledByRole: sub.filledByRole,
-      templateId: sub.templateId,
-      templateName: sub.templateName,
-    });
-    setSub(updated);
-    setEditing(false);
-    toast.success("Formulario UAFE actualizado");
+  if (notFound || !sub) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Formulario no encontrado" />
+        <p className="text-sm text-muted-foreground">Este formulario no existe.</p>
+        <Button variant="outline" className="cursor-pointer" onClick={() => router.push("/forms")}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Volver a formularios
+        </Button>
+      </div>
+    );
+  }
+
+  const handleSave = async (data: UafeFormData) => {
+    setSubmitting(true);
+    try {
+      const updated = await uafeFormsService.update(sub.id, data);
+      setSub(updated);
+      setEditing(false);
+      toast.success("Formulario UAFE actualizado");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || "No se pudo actualizar el formulario");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleComprobantesChange = (list: UafeComprobante[]) => {
+    setSub((prev) => (prev ? { ...prev, comprobantes: list } : prev));
   };
 
   return (
@@ -106,9 +145,21 @@ export default function UafeFormDetailPage() {
           matrizadorNombre: sub.data.matrizadorNombre?.trim() || currentUserName,
         }}
         readOnly={!editing}
+        submitting={submitting}
         headerNote={`Formulario llenado por: ${sub.filledByName}`}
         onSave={handleSave}
+        uafeFormId={sub.id}
+        comprobantes={sub.comprobantes}
+        onComprobantesChange={handleComprobantesChange}
       />
     </div>
+  );
+}
+
+export default function UafeFormDetailPage() {
+  return (
+    <Suspense>
+      <UafeFormDetail />
+    </Suspense>
   );
 }

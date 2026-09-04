@@ -88,7 +88,9 @@ export default function ArchivesPage() {
   const router = useRouter();
   const { archives, isLoading, isError, fetchAllArchives, deleteArchive, clearArchives } = useArchives();
   const { canEditArchive, canDeleteArchive, canCreateArchive, user } = usePermissions();
-  const pdfRestricted = !!user?.pdfDownloadDisabled;
+  // El store local puede estar desactualizado; view-url trae el flag real del servidor.
+  const [serverPdfRestricted, setServerPdfRestricted] = useState(false);
+  const pdfRestricted = !!user?.pdfDownloadDisabled || serverPdfRestricted;
   const creatingCodes = useCreatingArchivesStore((s) => s.codes);
 
   const [activeType, setActiveType] = useState<ArchiveType | "">("");
@@ -152,7 +154,8 @@ export default function ArchivesPage() {
         setPdfOpen(false);
         return;
       }
-      const url = await archivesService.getPdfUrl(key);
+      const { url, downloadRestricted } = await archivesService.getPdfUrl(key);
+      if (downloadRestricted) setServerPdfRestricted(true);
       setPdfViewUrl(url);
     } catch {
       toast.error("No se pudo cargar el documento");
