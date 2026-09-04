@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   Search, UserRound, Users, UserCheck, UserPlus, Upload,
-  Download, FileText, CheckCircle2, AlertCircle, X,
+  Download, FileText, CheckCircle2, AlertCircle, X, Calendar, CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -24,12 +26,60 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Pagination } from "@/components/common/Pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { archivesService, clientsService } from "@/services";
 import { toTitleCase } from "@/utils/formatters";
+import { cn } from "@/lib/utils";
 import type { ClientPayload } from "@/services/clients.service";
-import type { Archive } from "@/types";
+import type { Archive, ArchiveType } from "@/types";
 import { CharCounter } from "@/components/common/CharCounter";
 import { NacionalidadSelect } from "@/components/common/NacionalidadSelect";
+
+const TYPE_LABELS: Record<ArchiveType, string> = {
+  A: "Arrendamiento",
+  C: "Certificación",
+  D: "Diligencia",
+  P: "Protocolo",
+  O: "Otro",
+};
+const TYPE_COLORS: Record<ArchiveType, string> = {
+  A: "bg-primary/10 text-primary border-primary/20",
+  C: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  D: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  P: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  O: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+};
+
+function ArchiveRow({ archive, onView }: { archive: Archive; onView: () => void }) {
+  return (
+    <div
+      onClick={onView}
+      className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-sm font-semibold text-primary">{archive.code}</span>
+            {archive.type && (
+              <Badge variant="outline" className={cn("text-xs", TYPE_COLORS[archive.type])}>
+                {TYPE_LABELS[archive.type]}
+              </Badge>
+            )}
+            <StatusBadge status={archive.status} />
+          </div>
+          {archive.observations && (
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{archive.observations}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0 ml-4">
+        <Calendar className="w-3 h-3" />
+        {format(new Date(archive.createdAt), "dd MMM yyyy", { locale: es })}
+      </div>
+    </div>
+  );
+}
 
 interface DerivedClient {
   id: string;
@@ -250,6 +300,9 @@ export default function ClientsPage() {
   const [nacionalidad, setNacionalidad] = useState("");
   const [page, setPage] = useState(1);
 
+  // Modal "Ver trámites" — evita navegar a otra página
+  const [viewClient, setViewClient] = useState<DerivedClient | null>(null);
+
   const NOMBRE_MAX = 250;
 
   // Single-add dialog
@@ -326,6 +379,21 @@ export default function ClientsPage() {
   }, [filtered, page]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_LIMIT);
+
+  // Trámites del cliente abierto en el modal (mismo criterio de match que extractClients)
+  const viewGrantorArchives = useMemo(() => {
+    if (!viewClient) return [];
+    return allArchives.filter((a) =>
+      a.grantors.some((g) => (g.cedulaORuc ?? g.nombresCompletos) === viewClient.id)
+    );
+  }, [allArchives, viewClient]);
+
+  const viewBeneficiaryArchives = useMemo(() => {
+    if (!viewClient) return [];
+    return allArchives.filter((a) =>
+      a.beneficiaries.some((b) => (b.cedulaORuc ?? b.nombresCompletos) === viewClient.id)
+    );
+  }, [allArchives, viewClient]);
 
   const resetAddForm = () => {
     setAddForm({ nombresCompletos: "", cedulaORuc: "", pasaporte: "", isPasaporte: false, nacionalidad: "" });
@@ -526,7 +594,7 @@ export default function ClientsPage() {
           variant="outline"
           size="sm"
           className="h-7 text-xs"
-          onClick={() => router.push(`/clients/${encodeURIComponent(row.cedulaORuc || row.nombresCompletos)}`)}
+          onClick={() => setViewClient(row)}
         >
           Ver trámites
         </Button>
@@ -944,6 +1012,90 @@ export default function ClientsPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: Ver trámites del cliente ── */}
+      <Dialog open={!!viewClient} onOpenChange={(v) => !v && setViewClient(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto bg-card">
+          {viewClient && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <UserRound className="w-4 h-4 text-primary" />
+                  {viewClient.nombresCompletos}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                {viewClient.cedulaORuc && (
+                  <span className="inline-flex items-center gap-1.5 font-mono">
+                    <CreditCard className="w-3.5 h-3.5" />
+                    {viewClient.cedulaORuc}
+                  </span>
+                )}
+                {viewClient.nacionalidad && <span>{viewClient.nacionalidad}</span>}
+                <Badge variant="outline" className="text-xs">
+                  {viewGrantorArchives.length + viewBeneficiaryArchives.length} trámite
+                  {viewGrantorArchives.length + viewBeneficiaryArchives.length !== 1 ? "s" : ""} en total
+                </Badge>
+              </div>
+
+              <div className="space-y-4 py-1">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-primary" />
+                    Como Otorgante
+                    <Badge variant="outline" className="text-xs">{viewGrantorArchives.length}</Badge>
+                  </p>
+                  {viewGrantorArchives.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No aparece como otorgante en ningún trámite
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {viewGrantorArchives.map((a) => (
+                        <ArchiveRow
+                          key={a.id}
+                          archive={a}
+                          onView={() => {
+                            setViewClient(null);
+                            router.push(`/archives/${a.id}`);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold flex items-center gap-2">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    A Favor De
+                    <Badge variant="outline" className="text-xs">{viewBeneficiaryArchives.length}</Badge>
+                  </p>
+                  {viewBeneficiaryArchives.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No aparece como beneficiario en ningún trámite
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {viewBeneficiaryArchives.map((a) => (
+                        <ArchiveRow
+                          key={a.id}
+                          archive={a}
+                          onView={() => {
+                            setViewClient(null);
+                            router.push(`/archives/${a.id}`);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

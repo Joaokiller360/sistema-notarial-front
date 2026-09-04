@@ -75,10 +75,9 @@ export const usersService = {
       result = (body.data ?? body) as PaginatedUsers;
     }
 
-    const enriched = await Promise.all(
-      result.data.map((u) => fetchUserById(u.id).catch(() => normalizeUser(u as RawUser)))
-    );
-    return { ...result, data: enriched };
+    // El listado ya trae userRoles/roles y pdfDownloadDisabled por usuario:
+    // normalizar aquí evita 1 GET /users/:id extra por fila (causaba 429).
+    return { ...result, data: result.data.map((u) => normalizeUser(u as RawUser)) };
   },
 
   getById: (id: string): Promise<User> => fetchUserById(id),

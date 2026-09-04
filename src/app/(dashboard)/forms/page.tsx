@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
-  Plus, Search, ClipboardList, Eye, Trash2, User2, Sparkles,
+  Plus, Search, ClipboardList, Eye, Trash2, User2, FileText, Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button-link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import {
@@ -24,14 +23,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
 import {
-  deleteUafe,
-  listUafe,
-  seedExampleUafe,
-  hasExampleUafe,
-  type UafeSubmission,
-} from "@/lib/uafe-forms";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { FORM_TEMPLATES } from "@/lib/form-templates";
+import { deleteUafe, listUafe, type UafeSubmission } from "@/lib/uafe-forms";
 
 const ACTO_LABEL: Record<string, string> = {
   compraventa_inmueble: "Compraventa de inmueble",
@@ -77,18 +79,9 @@ export default function FormsPage() {
   const [items, setItems] = useState<UafeSubmission[]>([]);
   const [search, setSearch] = useState("");
   const [natFilter, setNatFilter] = useState("");
-  const [examplesLoaded, setExamplesLoaded] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
-  const refresh = () => {
-    setItems(listUafe());
-    setExamplesLoaded(hasExampleUafe());
-  };
-
-  const handleSeedExamples = () => {
-    const n = seedExampleUafe();
-    refresh();
-    toast.success(n > 0 ? `${n} formularios de ejemplo cargados` : "Los ejemplos ya estaban cargados");
-  };
+  const refresh = () => setItems(listUafe());
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +89,6 @@ export default function FormsPage() {
     Promise.resolve().then(() => {
       if (cancelled) return;
       setItems(listUafe());
-      setExamplesLoaded(hasExampleUafe());
     });
     return () => {
       cancelled = true;
@@ -244,16 +236,10 @@ export default function FormsPage() {
         title="Formularios"
         description="Formularios notariales — debida diligencia UAFE (Conozca a su cliente)"
       >
-        {!examplesLoaded && (
-          <Button variant="outline" className="cursor-pointer" onClick={handleSeedExamples}>
-            <Sparkles className="w-4 h-4 mr-2" />
-            Cargar 3 ejemplos
-          </Button>
-        )}
-        <ButtonLink href="/forms/plantillas">
+        <Button className="cursor-pointer" onClick={() => setTemplateModalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Nuevo formulario
-        </ButtonLink>
+        </Button>
       </PageHeader>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -319,6 +305,51 @@ export default function FormsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={templateModalOpen} onOpenChange={setTemplateModalOpen}>
+        <DialogContent className="bg-white sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nuevo formulario</DialogTitle>
+            <DialogDescription>Elige la plantilla para el nuevo formulario</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3">
+            {FORM_TEMPLATES.map((tpl) => (
+              <Card
+                key={tpl.id}
+                className={cn(
+                  "flex flex-col",
+                  tpl.principal && "border-primary/40 ring-1 ring-primary/20"
+                )}
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <FileText className="w-4 h-4 text-primary shrink-0" />
+                    {tpl.name}
+                    {tpl.principal && (
+                      <Badge variant="outline" className="ml-auto gap-1 text-[10px]">
+                        <Star className="w-3 h-3" />
+                        Principal
+                      </Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">{tpl.description}</p>
+                  <Button
+                    className="cursor-pointer w-full"
+                    onClick={() => {
+                      setTemplateModalOpen(false);
+                      router.push(`/forms/nuevo/${tpl.id}`);
+                    }}
+                  >
+                    Usar esta plantilla
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { FolderArchive, Users, UserRound, Plus, Newspaper, CalendarDays, ImageOf
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { useAuthStore } from "@/store";
-import { archivesService, usersService, newsService } from "@/services";
+import { archivesService, newsService } from "@/services";
 import type { Archive, News } from "@/types";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -20,7 +20,6 @@ const ROLE_LABELS: Record<string, string> = {
 interface Stats {
   totalArchives: number;
   totalClients: number;
-  totalUsers: number;
 }
 
 interface YearCount {
@@ -52,10 +51,9 @@ export default function DashboardPage() {
     (async () => {
       setIsLoading(true);
       try {
-        const [archivesFirst, allUsers, news] =
+        const [archivesFirst, news] =
           await Promise.allSettled([
             archivesService.getAll({ page: 1, limit: 100 }),
-            usersService.getAll({ page: 1, limit: 1 }),
             newsService.getAll({ page: 1, limit: 3 }),
           ]);
 
@@ -93,12 +91,7 @@ export default function DashboardPage() {
           );
         }
 
-        setStats({
-          totalArchives,
-          totalClients,
-          totalUsers:
-            allUsers.status === "fulfilled" ? allUsers.value.total : 0,
-        });
+        setStats({ totalArchives, totalClients });
 
         if (news.status === "fulfilled") {
           setLatestNews(news.value.data);
@@ -124,7 +117,7 @@ export default function DashboardPage() {
         description={`Panel de control · ${ROLE_LABELS[user?.roles?.[0] || ""] || "Sin rol"}`}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <StatCard
           title="Total de Archivos"
           value={stats?.totalArchives ?? "—"}
@@ -137,13 +130,6 @@ export default function DashboardPage() {
           value={stats?.totalClients ?? "—"}
           description="Otorgantes y beneficiarios"
           icon={UserRound}
-          isLoading={isLoading}
-        />
-        <StatCard
-          title="Usuarios"
-          value={stats?.totalUsers ?? "—"}
-          description="Usuarios registrados"
-          icon={Users}
           isLoading={isLoading}
         />
       </div>
