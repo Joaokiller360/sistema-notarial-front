@@ -3,19 +3,30 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus, Search, Filter, Eye, Pencil, Trash2,
+  Plus, Search, Filter, Eye, Pencil, Trash2, FileText, ExternalLink, Download, Ban,
   FolderArchive, FileCheck2, ClipboardList, BookOpen, FolderOpen, LayoutList, AlertCircle, RefreshCw,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/PageHeader";
+import { NacionalidadSelect } from "@/components/common/NacionalidadSelect";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Pagination } from "@/components/common/Pagination";
 import { useArchives, usePermissions } from "@/hooks";
+import { useCreatingArchivesStore } from "@/store";
+import { archivesService } from "@/services";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +42,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { Archive, ArchiveStatus, ArchiveType } from "@/types";
 
-const PAGE_LIMIT = 10;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const STATUS_OPTIONS: { value: ArchiveStatus | ""; label: string }[] = [
   { value: "", label: "Todos los estados" },
@@ -76,14 +87,108 @@ const TYPE_COLORS: Record<ArchiveType, string> = {
 export default function ArchivesPage() {
   const router = useRouter();
   const { archives, isLoading, isError, fetchAllArchives, deleteArchive, clearArchives } = useArchives();
-  const { canEditArchive, canDeleteArchive, canCreateArchive } = usePermissions();
+  const { canEditArchive, canDeleteArchive, canCreateArchive, user } = usePermissions();
+  const pdfRestricted = !!user?.pdfDownloadDisabled;
+  const creatingCodes = useCreatingArchivesStore((s) => s.codes);
 
   const [activeType, setActiveType] = useState<ArchiveType | "">("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ArchiveStatus | "">("");
+  const [nacionalidad, setNacionalidad] = useState("");
   const [clientPage, setClientPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Detail modal (todo)
+  const [detailArchive, setDetailArchive] = useState<Archive | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // PDF-only modal
+  const [pdfOpen, setPdfOpen] = useState(false);
+  const [pdfViewUrl, setPdfViewUrl] = useState<string | null>(null);
+  const [pdfName, setPdfName] = useState("documento.pdf");
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+
+  const openDetail = async (row: Archive) => {
+    setDetailArchive(row);
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      const full = await archivesService.getById(row.id);
+      setDetailArchive(full);
+    } catch {
+      // keep row data as fallback
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const resolvePdfKey = async (row: Archive): Promise<string | null> => {
+    if (row.pdfUrl) return row.pdfUrl;
+    try {
+      const full = await archivesService.getById(row.id);
+      return full.pdfUrl ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const openPdf = async (row: Archive) => {
+    if (creatingCodes.includes(row.code)) {
+      toast.info("El archivo aún se está creando. Espera a que termine.");
+      return;
+    }
+    setPdfOpen(true);
+    setPdfViewUrl(null);
+    setPdfName(row.pdfFileName || "documento.pdf");
+    setPdfLoading(true);
+    try {
+      const key = await resolvePdfKey(row);
+      if (!key) {
+        toast.error("Este archivo no tiene documento adjunto");
+        setPdfOpen(false);
+        return;
+      }
+      const url = await archivesService.getPdfUrl(key);
+      setPdfViewUrl(url);
+    } catch {
+      toast.error("No se pudo cargar el documento");
+      setPdfOpen(false);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const downloadPdf = async (row: Archive) => {
+    if (pdfRestricted) {
+      toast.error("Descarga deshabilitada para tu usuario");
+      return;
+    }
+    setPdfDownloading(true);
+    try {
+      const key = await resolvePdfKey(row);
+      if (!key) {
+        toast.error("Este archivo no tiene documento adjunto");
+        return;
+      }
+      const blob = await archivesService.downloadPdf(key);
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = row.pdfFileName || "documento.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    } catch {
+      toast.error("No se pudo descargar el documento");
+    } finally {
+      setPdfDownloading(false);
+    }
+  };
 
   const load = useCallback(() => {
     fetchAllArchives({ status: status || undefined });
@@ -97,7 +202,27 @@ export default function ArchivesPage() {
   // Reset client page when type / search / status change
   useEffect(() => {
     setClientPage(1);
-  }, [activeType, search, status]);
+  }, [activeType, search, status, nacionalidad, pageSize]);
+
+  // Block print / save shortcuts while a restricted user has a PDF open
+  useEffect(() => {
+    if (!pdfRestricted || (!pdfOpen && !detailOpen)) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (k === "p" || k === "s")) {
+        e.preventDefault();
+        e.stopPropagation();
+        toast.error("Impresión y descarga deshabilitadas para tu usuario");
+      }
+    };
+    const onBeforePrint = (e: Event) => e.preventDefault();
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("beforeprint", onBeforePrint);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("beforeprint", onBeforePrint);
+    };
+  }, [pdfRestricted, pdfOpen, detailOpen]);
 
   const handleTabChange = (type: ArchiveType | "") => {
     setActiveType(type);
@@ -111,6 +236,14 @@ export default function ArchivesPage() {
 
     if (activeType) {
       data = data.filter((a) => a.type === activeType);
+    }
+
+    if (nacionalidad) {
+      data = data.filter(
+        (a) =>
+          a.grantors.some((g) => g.nacionalidad === nacionalidad) ||
+          a.beneficiaries.some((b) => b.nacionalidad === nacionalidad)
+      );
     }
 
     if (search) {
@@ -138,25 +271,25 @@ export default function ArchivesPage() {
     });
 
     return data;
-  }, [archives?.data, activeType, search]);
+  }, [archives?.data, activeType, search, nacionalidad]);
 
   const displayData = useMemo(() => {
-    const start = (clientPage - 1) * PAGE_LIMIT;
-    return filteredData.slice(start, start + PAGE_LIMIT);
-  }, [filteredData, clientPage]);
+    const start = (clientPage - 1) * pageSize;
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, clientPage, pageSize]);
 
   const paginationInfo = useMemo(() => {
     const total = filteredData.length;
-    const totalPages = Math.ceil(total / PAGE_LIMIT);
+    const totalPages = Math.ceil(total / pageSize);
     if (totalPages <= 1) return null;
     return {
       page: clientPage,
       totalPages,
       total,
-      limit: PAGE_LIMIT,
+      limit: pageSize,
       onPageChange: setClientPage,
     };
-  }, [activeType, search, archives, filteredData, clientPage]);
+  }, [activeType, search, archives, filteredData, clientPage, pageSize]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -233,15 +366,28 @@ export default function ArchivesPage() {
       key: "actions",
       label: "Acciones",
       className: "text-right",
-      render: (row) => (
+      render: (row) => {
+       const isCreating = creatingCodes.includes(row.code);
+       return (
         <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 cursor-pointer"
-            onClick={() => router.push(`/archives/${row.id}`)}
+            title="Ver todo"
+            onClick={() => openDetail(row)}
           >
             <Eye className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 cursor-pointer"
+            title={isCreating ? "Creando archivo…" : "Ver PDF"}
+            disabled={isCreating}
+            onClick={() => openPdf(row)}
+          >
+            <FileText className="w-3.5 h-3.5" />
           </Button>
           {canEditArchive() && (
             <Button
@@ -264,7 +410,8 @@ export default function ArchivesPage() {
             </Button>
           )}
         </div>
-      ),
+       );
+      },
     },
   ];
 
@@ -321,6 +468,24 @@ export default function ArchivesPage() {
             onChange={(e) => { setSearch(e.target.value); setClientPage(1); }}
           />
         </div>
+        <div className="w-full sm:w-56">
+          <NacionalidadSelect
+            value={nacionalidad}
+            onChange={setNacionalidad}
+          />
+        </div>
+        <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <SelectItem key={n} value={String(n)}>
+                Mostrar {n}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-3">
@@ -391,6 +556,190 @@ export default function ArchivesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Detail modal — todo */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="bg-white sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="font-mono text-primary">{detailArchive?.code}</span>
+              {detailArchive?.type && (
+                <Badge variant="outline" className={cn("text-xs", TYPE_COLORS[detailArchive.type])}>
+                  {TYPE_LABELS[detailArchive.type]}
+                </Badge>
+              )}
+              {detailArchive?.status && <StatusBadge status={detailArchive.status} />}
+            </DialogTitle>
+            <DialogDescription>
+              {detailArchive &&
+                `Creado el ${format(new Date(detailArchive.createdAt), "dd/MM/yyyy HH:mm")}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailArchive && (
+            <div className="space-y-5 text-sm">
+              {detailArchive.observations && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Observaciones</p>
+                  <p className="break-words">{detailArchive.observations}</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  Otorgantes ({detailArchive.grantors.length})
+                </p>
+                <div className="space-y-2">
+                  {detailArchive.grantors.map((g, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-border bg-muted/20 grid grid-cols-3 gap-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Nombre</p>
+                        <p className="break-words">{g.nombresCompletos}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Cédula/RUC</p>
+                        <p className="font-mono break-all">{g.cedulaORuc}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Nacionalidad</p>
+                        <p className="break-words">{g.nacionalidad}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {detailArchive.grantors.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Sin otorgantes</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  A favor de ({detailArchive.beneficiaries.length})
+                </p>
+                <div className="space-y-2">
+                  {detailArchive.beneficiaries.map((b, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-border bg-muted/20 grid grid-cols-3 gap-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Nombre</p>
+                        <p className="break-words">{b.nombresCompletos}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Cédula/RUC</p>
+                        <p className="font-mono break-all">{b.cedulaORuc}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Nacionalidad</p>
+                        <p className="break-words">{b.nacionalidad}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {detailArchive.beneficiaries.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Sin beneficiarios</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 border-t border-border pt-3">
+                {detailArchive.createdBy && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Creado por</p>
+                    <p>{detailArchive.createdBy.firstName} {detailArchive.createdBy.lastName}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground">Actualizado</p>
+                  <p>{format(new Date(detailArchive.updatedAt), "dd/MM/yyyy HH:mm")}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={() => detailArchive && openPdf(detailArchive)}
+                >
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                  Ver PDF
+                </Button>
+                {!pdfRestricted && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer"
+                    disabled={pdfDownloading}
+                    onClick={() => detailArchive && downloadPdf(detailArchive)}
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                    Descargar
+                  </Button>
+                )}
+                {pdfRestricted && (
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground self-center">
+                    <Ban className="w-3.5 h-3.5 text-destructive" />
+                    Descarga e impresión deshabilitadas para tu usuario
+                  </span>
+                )}
+                {detailLoading && (
+                  <span className="text-xs text-muted-foreground self-center">Cargando detalles…</span>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF-only modal */}
+      <Dialog open={pdfOpen} onOpenChange={setPdfOpen}>
+        <DialogContent className="bg-white sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              <span className="truncate">{pdfName}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div
+            className="h-[75vh] w-full rounded-lg border border-border bg-muted/20 overflow-hidden"
+            onContextMenu={(e) => { if (pdfRestricted) e.preventDefault(); }}
+          >
+            {pdfLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <span className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : pdfViewUrl ? (
+              <iframe
+                src={pdfRestricted ? `${pdfViewUrl}#toolbar=0&navpanes=0` : pdfViewUrl}
+                title={pdfName}
+                className="h-full w-full"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Sin documento
+              </div>
+            )}
+          </div>
+          {pdfViewUrl && (
+            <div className="flex justify-end">
+              {pdfRestricted ? (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Ban className="w-3.5 h-3.5 text-destructive" />
+                  Descarga e impresión deshabilitadas para tu usuario
+                </span>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={() => window.open(pdfViewUrl, "_blank", "noopener,noreferrer")}
+                >
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                  Abrir en pestaña nueva
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

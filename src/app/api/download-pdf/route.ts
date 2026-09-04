@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
   }
 
   const blob = await fileRes.arrayBuffer();
-  const filename = key.split("/").pop() || "documento.pdf";
+  const rawFilename = key.split("/").pop() || "documento.pdf";
+  const filename = rawFilename.replace(/[^a-zA-Z0-9._-]/g, "_");
 
   return new NextResponse(blob, {
     headers: {

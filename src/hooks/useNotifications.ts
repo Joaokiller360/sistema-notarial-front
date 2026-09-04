@@ -1,32 +1,28 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store";
 import { useNotificationStore } from "@/store/notification.store";
 import { usersService, notificationsService, tasksService } from "@/services";
-import type { User } from "@/types";
 import type { SendNotificationPayload, AssignTaskPayload, TaskStatus } from "@/types";
 
-export function useNotifications() {
+/**
+ * Called ONCE in DashboardContent (layout).
+ * Fetches users, notifications, and tasks into the shared Zustand store.
+ * Keeping fetch effects here prevents the N×consumers multiplication that
+ * caused 429 bursts when the hook was called from multiple components.
+ */
+export function useNotificationsBootstrap() {
   const { user } = useAuthStore();
   const {
-    notifications,
-    tasks,
     setNotifications,
-    prependNotification,
-    patchNotification,
-    removeNotification: storeRemoveNotification,
     setTasks,
-    prependTask,
-    patchTask,
-    removeTask: storeRemoveTask,
+    setUsers,
+    setUsersLoading,
   } = useNotificationStore();
 
-  /* ── Users ───────────────────────────────────────────── */
-  const [users, setUsers] = useState<User[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-
+  /* ── Users (needed by send/assign forms) ────────────── */
   useEffect(() => {
     let cancelled = false;
     setUsersLoading(true);
@@ -36,9 +32,9 @@ export function useNotifications() {
       .catch(() => {})
       .finally(() => { if (!cancelled) setUsersLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── Fetch data on mount ─────────────────────────────── */
+  /* ── Notifications + Tasks ───────────────────────────── */
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -69,6 +65,26 @@ export function useNotifications() {
 
     return () => { cancelled = true; };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/**
+ * Pure read + actions hook. No fetch side effects.
+ * Safe to call from any number of components without causing extra API requests.
+ */
+export function useNotifications() {
+  const { user } = useAuthStore();
+  const {
+    notifications,
+    tasks,
+    users,
+    usersLoading,
+    prependNotification,
+    patchNotification,
+    removeNotification: storeRemoveNotification,
+    prependTask,
+    patchTask,
+    removeTask: storeRemoveTask,
+  } = useNotificationStore();
 
   /* ── Permissions ─────────────────────────────────────── */
   const canSend =
@@ -153,7 +169,6 @@ export function useNotifications() {
             }),
           })
             .then((r) => r.json())
-            .then((r) => console.log("[email/notification]", r))
             .catch(() => {});
         }
       }
@@ -190,7 +205,6 @@ export function useNotifications() {
             }),
           })
             .then((r) => r.json())
-            .then((r) => console.log("[email/task]", r))
             .catch(() => {});
         }
       }
@@ -207,7 +221,7 @@ export function useNotifications() {
       await notificationsService.markRead(id);
       patchNotification(id, { read: true });
     } catch {
-      // silent — optimistic already handled if needed
+      // silent
     }
   };
 

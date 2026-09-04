@@ -1,8 +1,9 @@
 export { useAuth } from "./useAuth";
-export { useNotifications } from "./useNotifications";
+export { useNotifications, useNotificationsBootstrap } from "./useNotifications";
 export { usePermissions } from "./usePermissions";
 export { useArchives } from "./useArchives";
 export { useUsers } from "./useUsers";
 export { useTokenRefresh } from "./useTokenRefresh";
 export { useSystemSettings } from "./useSystemSettings";
+export { useCurrentUserSync } from "./useCurrentUserSync";
 export { useNews } from "./useNews";

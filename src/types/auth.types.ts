@@ -8,6 +8,8 @@ export interface User {
   roles: Role[];
   permissions: string[];
   isActive: boolean;
+  /** Si es true, este usuario no puede descargar ni imprimir los PDF de archivos. */
+  pdfDownloadDisabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

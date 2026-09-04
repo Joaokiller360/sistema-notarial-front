@@ -56,7 +56,6 @@ export function useArchives() {
       const axiosErr = err as { response?: { data?: { message?: string; statusCode?: number }; status?: number } };
       const status = axiosErr?.response?.status;
       const msg = axiosErr?.response?.data?.message;
-      console.error("[fetchArchives] error", status, msg, err);
       setIsError(true);
       toast.error(
         msg
@@ -68,34 +67,30 @@ export function useArchives() {
     }
   }, []);
 
-  // Fetches ALL pages (batch: 50/page, max 500) without sending `type` to backend.
-  // Needed because the backend DTO forbids `type` as a query param.
+  // Fetches all pages sequentially (100/page, max 1 000 records) to avoid
+  // bursting the backend with concurrent requests and triggering rate limits.
+  // The backend DTO forbids `type` as a query param, so type-filtering is omitted.
   const fetchAllArchives = useCallback(
     async (filters: Omit<ArchiveFilters, "type"> = {}) => {
       setIsLoading(true);
       setIsError(false);
       setArchives(null);
       try {
-        const BATCH = 50;
+        const BATCH = 100;
+        const MAX_PAGES = 10;
+
         const first = await archivesService.getAll({ ...filters, page: 1, limit: BATCH });
         let all: Archive[] = [...first.data];
 
-        if (first.totalPages > 1) {
-          const remaining = Array.from(
-            { length: Math.min(first.totalPages - 1, 9) },
-            (_, i) => i + 2
-          );
-          const results = await Promise.all(
-            remaining.map((p) =>
-              archivesService.getAll({ ...filters, page: p, limit: BATCH })
-            )
-          );
-          for (const r of results) all = all.concat(r.data);
+        const pagesToFetch = Math.min(first.totalPages - 1, MAX_PAGES - 1);
+        for (let i = 0; i < pagesToFetch; i++) {
+          const r = await archivesService.getAll({ ...filters, page: i + 2, limit: BATCH });
+          all = all.concat(r.data);
         }
 
         setArchives({
           data: all,
-          total: all.length,
+          total: first.total,
           page: 1,
           limit: all.length || BATCH,
           totalPages: 1,
@@ -104,9 +99,8 @@ export function useArchives() {
         const axiosErr = err as {
           response?: { data?: { message?: string }; status?: number };
         };
-        const status = axiosErr?.response?.status;
         const msg = axiosErr?.response?.data?.message;
-        console.error("[fetchAllArchives] error", status, msg);
+        const status = axiosErr?.response?.status;
         setIsError(true);
         toast.error(
           msg

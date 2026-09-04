@@ -11,7 +11,7 @@ const API_URL =
 export const apiClient = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 7200000,
+  timeout: 30000,
 });
 
 let isRefreshing = false;
@@ -19,6 +19,8 @@ let failedQueue: Array<{
   resolve: (value: string) => void;
   reject: (error: unknown) => void;
 }> = [];
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
@@ -44,7 +46,19 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
+      _retryCount?: number;
     };
+
+    if (error.response?.status === 429) {
+      const count = originalRequest._retryCount ?? 0;
+      if (count < 2) {
+        originalRequest._retryCount = count + 1;
+        const retryAfter = error.response.headers["retry-after"];
+        const delay = retryAfter ? parseInt(String(retryAfter)) * 1000 : (count + 1) * 1500;
+        await sleep(delay);
+        return apiClient(originalRequest);
+      }
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       const refreshToken = tokenUtils.getRefreshToken();
@@ -145,7 +159,7 @@ function getUserIdFromToken(): string | null {
 
 export const apiFormClient = axios.create({
   baseURL: API_URL,
-  timeout: 7200000,
+  timeout: 30000,
 });
 
 apiFormClient.interceptors.request.use(
@@ -164,7 +178,19 @@ apiFormClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
+      _retryCount?: number;
     };
+
+    if (error.response?.status === 429) {
+      const count = originalRequest._retryCount ?? 0;
+      if (count < 2) {
+        originalRequest._retryCount = count + 1;
+        const retryAfter = error.response.headers["retry-after"];
+        const delay = retryAfter ? parseInt(String(retryAfter)) * 1000 : (count + 1) * 1500;
+        await sleep(delay);
+        return apiFormClient(originalRequest);
+      }
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       const refreshToken = tokenUtils.getRefreshToken();

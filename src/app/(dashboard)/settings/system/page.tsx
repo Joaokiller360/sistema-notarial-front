@@ -239,13 +239,13 @@ export default function SystemSettingsPage() {
         />
       }
     >
-      <div className="space-y-6">
+      <div className="mx-auto w-full max-w-2xl space-y-6 px-1 sm:px-0">
         <PageHeader
           title="Configuración del Sistema"
           description="Ajustes globales del sistema notarial"
         />
 
-        <div className="max-w-2xl space-y-6">
+        <div className="space-y-6">
           <Card className="border-border bg-card">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -451,12 +451,16 @@ export default function SystemSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Separator className="border-destructive/20" />
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium">Limpiar registros de auditoría</p>
                   <p className="text-xs text-muted-foreground">Elimina logs de más de 90 días</p>
                 </div>
-                <Button variant="destructive" size="sm" className="text-primary-foreground cursor-pointer">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="text-primary-foreground cursor-pointer w-full sm:w-auto"
+                >
                   Limpiar
                 </Button>
               </div>

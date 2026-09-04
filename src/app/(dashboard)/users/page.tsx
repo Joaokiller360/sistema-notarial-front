@@ -167,7 +167,18 @@ export default function UsersPage() {
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-medium">{row.firstName} {row.lastName}</p>
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              {row.firstName} {row.lastName}
+              {row.pdfDownloadDisabled && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border border-destructive/20 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
+                  title="Descarga e impresión de PDF restringidas"
+                >
+                  <Ban className="w-3 h-3" />
+                  PDF
+                </span>
+              )}
+            </p>
             <p className="text-xs text-muted-foreground">{row.email}</p>
           </div>
         </div>

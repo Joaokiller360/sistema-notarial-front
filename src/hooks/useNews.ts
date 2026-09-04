@@ -61,18 +61,16 @@ export function useNews() {
 
             if (allEmails.length === 0) return;
 
-            const result = await fetch("/api/emails/news", {
+            await fetch("/api/emails/news", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 emails: allEmails,
                 news: { id: data.id, title: data.title, description: data.description },
               }),
-            }).then((r) => r.json());
-
-            console.log("[email/news]", result);
-          } catch (e) {
-            console.error("[email/news] error:", e);
+            });
+          } catch {
+            // background email dispatch — errors are non-fatal
           }
         })();
       }

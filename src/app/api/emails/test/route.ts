@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/route-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  if (!requireAuth(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const { to, subject, html } = await req.json() as { 
-      to: string; 
-      subject: string; 
+    const { to, subject, html } = await req.json() as {
+      to: string;
+      subject: string;
       html: string;
     };
 

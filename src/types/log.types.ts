@@ -22,6 +22,10 @@ export interface Log {
 export interface LogFilters {
   search?: string;
   action?: string;
+  /** ISO 8601 — límite inferior del rango de fechas */
+  startDate?: string;
+  /** ISO 8601 — límite superior del rango de fechas */
+  endDate?: string;
   page?: number;
   limit?: number;
 }

@@ -32,7 +32,14 @@ function normalizeRoles(u: RawUser): Role[] {
 }
 
 function normalizeUser(u: RawUser): User {
-  return { ...u, roles: normalizeRoles(u) };
+  const raw = u as RawUser & { canDownloadPdf?: boolean };
+  const pdfDownloadDisabled =
+    typeof raw.pdfDownloadDisabled === "boolean"
+      ? raw.pdfDownloadDisabled
+      : typeof raw.canDownloadPdf === "boolean"
+        ? !raw.canDownloadPdf
+        : undefined;
+  return { ...u, roles: normalizeRoles(u), pdfDownloadDisabled };
 }
 
 async function fetchUserById(id: string): Promise<User> {

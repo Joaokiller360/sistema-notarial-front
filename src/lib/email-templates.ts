@@ -1,3 +1,12 @@
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const RAW_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 const APP_URL = RAW_APP_URL.replace(/^(https?:\/\/)([^/@]+)@/, "$1$2.");
@@ -43,18 +52,18 @@ const base = (content: string) => `
 </html>`;
 
 export function newsEmail(news: { id: string; title: string; description: string }) {
-  // Sanitize APP_URL in case of typo (@ → .)
   const appUrl = APP_URL.replace(/^(https?:\/\/)([^/@]+)@/, "$1$2.");
+  const safeId = encodeURIComponent(news.id);
 
   return base(`
     <p class="label">Nueva Noticia Publicada</p>
-    <p style="font-size:20px;font-weight:700;color:#18181b;margin:0 0 20px;">${news.title}</p>
+    <p style="font-size:20px;font-weight:700;color:#18181b;margin:0 0 20px;">${escapeHtml(news.title)}</p>
     <hr />
     <div style="font-size:14px;color:#27272a;line-height:1.7;">
-      ${news.description}
+      ${escapeHtml(news.description)}
     </div>
     <hr />
-    <a href="${appUrl}/news/${news.id}" class="btn">Ver noticia en el sistema →</a>
+    <a href="${appUrl}/news/${safeId}" class="btn">Ver noticia en el sistema →</a>
   `);
 }
 
@@ -65,21 +74,22 @@ export function taskEmail(task: {
   dueDate: string;
   senderName: string;
 }) {
-  const priorityClass = `badge-${task.priority.toLowerCase()}`;
+  const safePriority = /^[a-zA-Z]+$/.test(task.priority) ? task.priority.toLowerCase() : "media";
+  const priorityClass = `badge-${safePriority}`;
   const due = new Date(task.dueDate).toLocaleDateString("es-EC", {
     day: "numeric", month: "long", year: "numeric",
   });
   return base(`
     <p class="label">Tienes una nueva tarea asignada</p>
-    <p class="value" style="font-size:17px;font-weight:700;margin-bottom:4px;">${task.title}</p>
-    <span class="badge ${priorityClass}">Prioridad ${task.priority}</span>
+    <p class="value" style="font-size:17px;font-weight:700;margin-bottom:4px;">${escapeHtml(task.title)}</p>
+    <span class="badge ${priorityClass}">Prioridad ${escapeHtml(task.priority)}</span>
     <hr />
     <p class="label">Descripción</p>
-    <p class="value">${task.description}</p>
+    <p class="value">${escapeHtml(task.description)}</p>
     <p class="label">Asignado por</p>
-    <p class="value">${task.senderName}</p>
+    <p class="value">${escapeHtml(task.senderName)}</p>
     <p class="label">Fecha límite</p>
-    <p class="value">${due}</p>
+    <p class="value">${escapeHtml(due)}</p>
     <a href="${APP_URL}/notifications" class="btn">Ver tarea →</a>
   `);
 }
@@ -90,16 +100,17 @@ export function notificationEmail(notif: {
   type: string;
   senderName: string;
 }) {
-  const typeClass = `badge-${notif.type.toLowerCase()}`;
+  const safeType = /^[a-zA-Z]+$/.test(notif.type) ? notif.type.toLowerCase() : "informativa";
+  const typeClass = `badge-${safeType}`;
   return base(`
     <p class="label">Nueva notificación</p>
-    <p class="value" style="font-size:17px;font-weight:700;margin-bottom:4px;">${notif.subject}</p>
-    <span class="badge ${typeClass}">${notif.type}</span>
+    <p class="value" style="font-size:17px;font-weight:700;margin-bottom:4px;">${escapeHtml(notif.subject)}</p>
+    <span class="badge ${typeClass}">${escapeHtml(notif.type)}</span>
     <hr />
     <p class="label">Mensaje</p>
-    <p class="value">${notif.message}</p>
+    <p class="value">${escapeHtml(notif.message)}</p>
     <p class="label">Enviado por</p>
-    <p class="value">${notif.senderName}</p>
+    <p class="value">${escapeHtml(notif.senderName)}</p>
     <a href="${APP_URL}/notifications" class="btn">Ver notificación →</a>
   `);
 }

@@ -3,9 +3,13 @@
 import { create } from "zustand";
 import type { Notification, Task } from "@/types";
 
+import type { User } from "@/types";
+
 interface NotificationState {
   notifications: Notification[];
   tasks: Task[];
+  users: User[];
+  usersLoading: boolean;
   setNotifications: (list: Notification[]) => void;
   prependNotification: (n: Notification) => void;
   patchNotification: (id: string, patch: Partial<Notification>) => void;
@@ -14,11 +18,15 @@ interface NotificationState {
   prependTask: (t: Task) => void;
   patchTask: (id: string, patch: Partial<Task>) => void;
   removeTask: (id: string) => void;
+  setUsers: (users: User[]) => void;
+  setUsersLoading: (loading: boolean) => void;
 }
 
 export const useNotificationStore = create<NotificationState>()((set) => ({
   notifications: [],
   tasks: [],
+  users: [],
+  usersLoading: false,
 
   setNotifications: (list) => set({ notifications: list }),
   prependNotification: (n) =>
@@ -38,4 +46,7 @@ export const useNotificationStore = create<NotificationState>()((set) => ({
     })),
   removeTask: (id) =>
     set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+
+  setUsers: (users) => set({ users }),
+  setUsersLoading: (usersLoading) => set({ usersLoading }),
 }));

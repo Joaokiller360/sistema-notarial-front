@@ -7,6 +7,7 @@ export interface CreateUserRequest {
   password: string;
   roleIds?: string[];
   isActive?: boolean;
+  pdfDownloadDisabled?: boolean;
 }
 
 export interface UpdateUserRequest {
@@ -15,6 +16,7 @@ export interface UpdateUserRequest {
   lastName?: string;
   roleIds?: string[];
   isActive?: boolean;
+  pdfDownloadDisabled?: boolean;
 }
 
 export interface UserFilters {

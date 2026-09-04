@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FROM_EMAIL, sendEmail } from "@/lib/resend";
 import { taskEmail } from "@/lib/email-templates";
+import { requireAuth } from "@/lib/route-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  if (!requireAuth(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { email, task } = await req.json() as {
       email: string;
@@ -29,7 +34,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(result);
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

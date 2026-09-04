@@ -24,6 +24,7 @@ export function usePermissions() {
   const canViewSystemSettings = () => isSuperAdmin();
   const canCreateNews = () => isSuperAdmin();
   const canDeleteNews = () => isSuperAdmin();
+  const canCreateForm = () => isSuperAdmin() || isNotario();
 
   const primaryRole = (): Role | undefined => (user?.roles ?? [])[0];
 
@@ -41,6 +42,7 @@ export function usePermissions() {
     canViewSystemSettings,
     canCreateNews,
     canDeleteNews,
+    canCreateForm,
     primaryRole,
     user,
   };

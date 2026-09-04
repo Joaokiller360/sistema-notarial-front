@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import DOMPurify from "dompurify";
 import { useNews, usePermissions } from "@/hooks";
 
 function formatDate(dateStr: string) {
@@ -162,7 +163,7 @@ export default function NewsDetailPage() {
 
         <div
           className="prose prose-sm dark:prose-invert max-w-none text-foreground/80"
-          dangerouslySetInnerHTML={{ __html: currentNews.description }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentNews.description) }}
         />
       </div>
     </div>

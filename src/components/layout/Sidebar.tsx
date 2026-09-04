@@ -9,12 +9,12 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Shield,
   Building2,
   ScrollText,
   UserRound,
   Newspaper,
   Bell,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store";
@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Archivos", href: "/archives", icon: FolderArchive },
   { label: "Clientes", href: "/clients", icon: UserRound },
+  { label: "Formularios", href: "/forms", icon: ClipboardList },
   { label: "Noticias", href: "/news", icon: Newspaper },
   { label: "Notificaciones", href: "/notifications", icon: Bell },
   { label: "Usuarios", href: "/users", icon: Users, roles: ["SUPER_ADMIN", "NOTARIO"] },
@@ -38,8 +39,7 @@ const navItems: NavItem[] = [
 ];
 
 const settingsItems: NavItem[] = [
-  { label: "Mi Perfil", href: "/settings/profile", icon: Settings },
-  { label: "Seguridad", href: "/settings/security", icon: Shield },
+  { label: "Mi Cuenta", href: "/settings/profile", icon: Settings },
   { label: "Sistema", href: "/settings/system", icon: Building2, roles: ["SUPER_ADMIN"] },
 ];
 

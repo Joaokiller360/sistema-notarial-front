@@ -18,9 +18,17 @@ export function useAuth() {
     try {
       const response = await authService.login(credentials);
       setAuth(response.user, response.tokens);
-      document.cookie = `notaria_access_token=${response.tokens.accessToken}; path=/; max-age=${response.tokens.expiresIn}`;
+      document.cookie = `notaria_access_token=${response.tokens.accessToken}; path=/; max-age=${response.tokens.expiresIn}; SameSite=Strict`;
       toast.success(`Bienvenido, ${response.user.firstName}`);
-      router.push("/dashboard");
+      // El MATRIZADOR "puro" aterriza en /forms; el resto en /dashboard.
+      const roles = response.user.roles ?? [];
+      const landing =
+        roles.includes("MATRIZADOR") &&
+        !roles.includes("SUPER_ADMIN") &&
+        !roles.includes("NOTARIO")
+          ? "/forms"
+          : "/dashboard";
+      router.push(landing);
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response
@@ -41,7 +49,7 @@ export function useAuth() {
     } finally {
       clearAuth();
       document.cookie =
-        "notaria_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+        "notaria_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict";
       router.push("/login");
     }
   };
@@ -84,7 +92,7 @@ export function useAuth() {
       toast.success("Contraseña actualizada. Por seguridad debes iniciar sesión nuevamente.");
       clearAuth();
       document.cookie =
-        "notaria_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+        "notaria_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict";
       router.push("/login");
     } catch (error: unknown) {
       const message =

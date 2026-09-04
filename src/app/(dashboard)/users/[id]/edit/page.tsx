@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Save, User } from "lucide-react";
+import { ArrowLeft, Save, User, Ban } from "lucide-react";
 import { toTitleCase } from "@/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -76,6 +76,7 @@ const userSchema = z.object({
     }),
   // stores role TYPE ("NOTARIO"), converted to UUID only on submit
   roleType: z.string().optional(),
+  pdfDownloadDisabled: z.boolean().optional(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -91,6 +92,7 @@ export default function EditUserPage() {
   const isTargetSuperAdmin = (targetUser?.roles ?? []).includes("SUPER_ADMIN");
   const showDisabledStatus = isSuperAdmin() && isSelf;
   const showRoleSelector = isSuperAdmin() && !isSelf && !isTargetSuperAdmin;
+  const showPdfRestriction = isSuperAdmin() && !isSelf && !isTargetSuperAdmin;
 
   const {
     register,
@@ -101,7 +103,7 @@ export default function EditUserPage() {
     formState: { errors, isSubmitted, isValid },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: { firstName: "", lastName: "", email: "", roleType: "" },
+    defaultValues: { firstName: "", lastName: "", email: "", roleType: "", pdfDownloadDisabled: false },
   });
 
   const firstNameValue = watch("firstName") || "";
@@ -165,6 +167,7 @@ export default function EditUserPage() {
         email:     targetUser.email,
         // store type directly — "NOTARIO" matches SelectItem value={role.type}
         roleType:  targetUser.roles?.[0] ?? "",
+        pdfDownloadDisabled: targetUser.pdfDownloadDisabled ?? false,
       });
     }
   }, [targetUser, reset]);
@@ -177,6 +180,7 @@ export default function EditUserPage() {
       firstName: data.firstName,
       lastName:  data.lastName,
       ...(showRoleSelector && selectedRole ? { roleIds: [selectedRole.id] } : {}),
+      ...(showPdfRestriction ? { pdfDownloadDisabled: !!data.pdfDownloadDisabled } : {}),
     });
     router.push("/users");
   };
@@ -317,6 +321,31 @@ export default function EditUserPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {showPdfRestriction && (
+              <div className="space-y-1.5 rounded-lg border border-border bg-muted/20 p-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-4 rounded border-border accent-primary cursor-pointer"
+                    checked={!!watch("pdfDownloadDisabled")}
+                    onChange={(e) =>
+                      setValue("pdfDownloadDisabled", e.target.checked, { shouldDirty: true })
+                    }
+                  />
+                  <span>
+                    <span className="flex items-center gap-1.5 text-sm font-medium">
+                      <Ban className="w-3.5 h-3.5 text-destructive" />
+                      Restringir descarga e impresión de PDF
+                    </span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      El usuario podrá ver los PDF de archivos pero no descargarlos,
+                      imprimirlos ni abrirlos en una pestaña nueva.
+                    </span>
+                  </span>
+                </label>
               </div>
             )}
 

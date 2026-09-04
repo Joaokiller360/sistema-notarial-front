@@ -27,7 +27,6 @@ export function useUsers() {
       const status = (err as { response?: { status?: number } })?.response?.status;
       const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
       const text = Array.isArray(msg) ? msg.join(" · ") : typeof msg === "string" ? msg : null;
-      console.error("[fetchUsers]", status, msg, err);
       toast.error(text ? `Error ${status ?? ""}: ${text}` : "Error al cargar los usuarios");
     } finally {
       setIsLoading(false);

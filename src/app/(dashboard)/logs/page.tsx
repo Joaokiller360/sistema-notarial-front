@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, Shield, RefreshCw, User, Clock, Monitor, ChevronDown, ChevronUp,
   Globe, Hash, FolderArchive, Users, BookOpen, FileText, LayoutDashboard, KeyRound,
+  CalendarDays, ChevronsLeft, ChevronsRight, X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Pagination } from "@/components/common/Pagination";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -227,6 +231,9 @@ function LogRow({ log }: { log: Log }) {
   );
 }
 
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
+const ACTION_OPTIONS = ["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "SEARCH", "READ", "LIST"];
+
 export default function LogsPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -236,28 +243,80 @@ export default function LogsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [action, setAction] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [jumpTo, setJumpTo] = useState("");
+
+  const hasFilters = !!(search || action || dateFrom || dateTo);
 
   useEffect(() => {
     if (!isAdmin) router.replace("/dashboard");
   }, [isAdmin, router]);
 
+  // Reset a la primera página cuando cambian filtros o tamaño
+  useEffect(() => {
+    setPage(1);
+  }, [search, action, dateFrom, dateTo, limit]);
+
   const load = useCallback(async () => {
     if (!isAdmin) return;
     setIsLoading(true);
     try {
-      const data = await logsService.getAll({ search: search || undefined, page, limit: 20 });
+      const data = await logsService.getAll({
+        search: search || undefined,
+        action: action || undefined,
+        startDate: dateFrom ? new Date(`${dateFrom}T00:00:00`).toISOString() : undefined,
+        endDate: dateTo ? new Date(`${dateTo}T23:59:59.999`).toISOString() : undefined,
+        page,
+        limit,
+      });
       setLogs(data);
     } catch {
       // silently fail — backend may not have /logs yet
     } finally {
       setIsLoading(false);
     }
-  }, [isAdmin, search, page]);
+  }, [isAdmin, search, action, dateFrom, dateTo, page, limit]);
 
   useEffect(() => {
     const timer = setTimeout(load, 300);
     return () => clearTimeout(timer);
   }, [load]);
+
+  // Fallback en cliente: si el backend ignora los filtros de acción/fecha,
+  // igual se aplican sobre la página cargada.
+  const visibleLogs = useMemo(() => {
+    let rows = logs?.data ?? [];
+    if (action) {
+      rows = rows.filter((l) => (l.action ?? "").toUpperCase().includes(action));
+    }
+    if (dateFrom) {
+      const from = new Date(`${dateFrom}T00:00:00`).getTime();
+      rows = rows.filter((l) => new Date(l.createdAt).getTime() >= from);
+    }
+    if (dateTo) {
+      const to = new Date(`${dateTo}T23:59:59.999`).getTime();
+      rows = rows.filter((l) => new Date(l.createdAt).getTime() <= to);
+    }
+    return rows;
+  }, [logs?.data, action, dateFrom, dateTo]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setAction("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const goToPage = () => {
+    const n = parseInt(jumpTo, 10);
+    if (!Number.isNaN(n) && logs && n >= 1 && n <= logs.totalPages) {
+      setPage(n);
+    }
+    setJumpTo("");
+  };
 
   if (!isAdmin) return null;
 
@@ -271,19 +330,76 @@ export default function LogsPage() {
           <Shield className="w-3.5 h-3.5 text-white" />
           <span className="text-xs font-medium text-white">Solo Super Admin</span>
         </div>
+        <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
+          <SelectTrigger className="w-36 cursor-pointer">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <SelectItem key={n} value={String(n)}>Mostrar {n}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button variant="outline" size="icon" className="cursor-pointer" onClick={load} disabled={isLoading}>
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
         </Button>
       </PageHeader>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por usuario, acción..."
-          className="pl-9"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        />
+      {/* Filtros */}
+      <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por usuario, acción..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <Select value={action || "all"} onValueChange={(v) => setAction(!v || v === "all" ? "" : v)}>
+          <SelectTrigger className="w-full lg:w-44 cursor-pointer">
+            <SelectValue placeholder="Todas las acciones" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las acciones</SelectItem>
+            {ACTION_OPTIONS.map((a) => (
+              <SelectItem key={a} value={a}>{a}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground flex items-center gap-1">
+            <CalendarDays className="w-3 h-3" /> Desde
+          </label>
+          <Input
+            type="date"
+            className="w-full lg:w-40"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground flex items-center gap-1">
+            <CalendarDays className="w-3 h-3" /> Hasta
+          </label>
+          <Input
+            type="date"
+            className="w-full lg:w-40"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </div>
+
+        {hasFilters && (
+          <Button variant="ghost" className="cursor-pointer text-muted-foreground" onClick={clearFilters}>
+            <X className="w-4 h-4 mr-1.5" />
+            Limpiar
+          </Button>
+        )}
       </div>
 
       <div className="rounded-lg border border-border overflow-hidden overflow-x-auto">
@@ -314,18 +430,23 @@ export default function LogsPage() {
                 </div>
               ))}
             </div>
-          ) : !logs || logs.data.length === 0 ? (
+          ) : visibleLogs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
               <Shield className="w-10 h-10 opacity-20" />
-              <p className="text-sm">No hay registros disponibles</p>
+              <p className="text-sm">
+                {hasFilters ? "Ningún registro coincide con los filtros" : "No hay registros disponibles"}
+              </p>
               <p className="text-xs opacity-60">
-                El backend debe exponer el endpoint{" "}
-                <code className="font-mono">/logs</code>
+                {hasFilters ? (
+                  "Ajusta el rango de fechas, la acción o la búsqueda."
+                ) : (
+                  <>El backend debe exponer el endpoint <code className="font-mono">/logs</code></>
+                )}
               </p>
             </div>
           ) : (
             <div>
-              {logs.data.map((log) => (
+              {visibleLogs.map((log) => (
                 <LogRow key={log.id} log={log} />
               ))}
             </div>
@@ -334,13 +455,50 @@ export default function LogsPage() {
       </div>
 
       {logs && logs.totalPages > 1 && (
-        <Pagination
-          page={logs.page}
-          totalPages={logs.totalPages}
-          total={logs.total}
-          limit={logs.limit}
-          onPageChange={setPage}
-        />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2 px-2">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
+                onClick={() => setPage(1)} disabled={logs.page <= 1}
+                title="Primera página"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
+                onClick={() => setPage(logs.totalPages)} disabled={logs.page >= logs.totalPages}
+                title="Última página (más antiguos)"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span>Ir a pág.</span>
+              <Input
+                type="number"
+                min={1}
+                max={logs.totalPages}
+                value={jumpTo}
+                onChange={(e) => setJumpTo(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") goToPage(); }}
+                className="h-8 w-16"
+                placeholder={String(logs.page)}
+              />
+              <Button variant="outline" size="sm" className="h-8 cursor-pointer" onClick={goToPage}>
+                Ir
+              </Button>
+              <span className="whitespace-nowrap">de {logs.totalPages}</span>
+            </div>
+          </div>
+          <Pagination
+            page={logs.page}
+            totalPages={logs.totalPages}
+            total={logs.total}
+            limit={logs.limit}
+            onPageChange={setPage}
+          />
+        </div>
       )}
     </div>
   );

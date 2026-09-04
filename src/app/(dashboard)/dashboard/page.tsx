@@ -66,8 +66,10 @@ export default function DashboardPage() {
           totalArchives = archivesFirst.value.total;
           let collected: Archive[] = [...archivesFirst.value.data];
           const totalPages = archivesFirst.value.totalPages;
+          // Cap at 10 pages (1 000 records) to prevent unbounded API hammering
           if (totalPages > 1) {
-            const remaining = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+            const pagesToFetch = Math.min(totalPages - 1, 9);
+            const remaining = Array.from({ length: pagesToFetch }, (_, i) => i + 2);
             const results = await Promise.all(
               remaining.map((p) => archivesService.getAll({ page: p, limit: 100 }))
             );

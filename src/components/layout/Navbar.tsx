@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, LogOut, User, Settings } from "lucide-react";
+import { Menu, LogOut, User, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUiStore } from "@/store";
 import { useAuth } from "@/hooks";
@@ -99,10 +99,10 @@ export function Navbar() {
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => router.push("/settings/profile")}>
                 <User className="w-4 h-4 mr-2" />
-                Mi Perfil
+                Mi Cuenta
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/settings/security")}>
-                <Settings className="w-4 h-4 mr-2" />
+              <DropdownMenuItem onClick={() => router.push("/settings/profile?tab=security")}>
+                <Shield className="w-4 h-4 mr-2" />
                 Seguridad
               </DropdownMenuItem>
             </DropdownMenuGroup>

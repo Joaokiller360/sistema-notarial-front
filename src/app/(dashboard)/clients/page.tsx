@@ -247,6 +247,7 @@ export default function ClientsPage() {
   const [allArchives, setAllArchives] = useState<Archive[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [nacionalidad, setNacionalidad] = useState("");
   const [page, setPage] = useState(1);
 
   const NOMBRE_MAX = 250;
@@ -302,16 +303,22 @@ export default function ClientsPage() {
   const clients = useMemo(() => extractClients(allArchives), [allArchives]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return clients;
-    const q = search.toLowerCase();
-    return clients.filter(
-      (c) =>
-        c.nombresCompletos.toLowerCase().includes(q) ||
-        c.cedulaORuc.includes(q)
-    );
-  }, [clients, search]);
+    let data = clients;
+    if (nacionalidad) {
+      data = data.filter((c) => c.nacionalidad === nacionalidad);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      data = data.filter(
+        (c) =>
+          c.nombresCompletos.toLowerCase().includes(q) ||
+          c.cedulaORuc.includes(q)
+      );
+    }
+    return data;
+  }, [clients, search, nacionalidad]);
 
-  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => { setPage(1); }, [search, nacionalidad]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * PAGE_LIMIT;
@@ -558,14 +565,19 @@ export default function ClientsPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nombre o cédula..."
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre o cédula..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="w-full sm:w-56">
+          <NacionalidadSelect value={nacionalidad} onChange={setNacionalidad} />
+        </div>
       </div>
 
       {isLoading ? (

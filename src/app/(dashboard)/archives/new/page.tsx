@@ -30,6 +30,7 @@ import { GrantorForm } from "@/components/common/GrantorForm";
 import { CharCounter } from "@/components/common/CharCounter";
 import { useArchives, useSystemSettings } from "@/hooks";
 import { useArchiveFormStore } from "@/store/archiveFormStore";
+import { useCreatingArchivesStore } from "@/store/creatingArchives.store";
 import { archivesService } from "@/services";
 import { cn } from "@/lib/utils";
 import type { ArchiveType } from "@/types";
@@ -135,6 +136,8 @@ function NewArchiveForm() {
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
   const { photoFiles, setPhotoFiles, resetArchiveForm: resetStore } = useArchiveFormStore();
+  const addCreating = useCreatingArchivesStore((s) => s.add);
+  const removeCreating = useCreatingArchivesStore((s) => s.remove);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -395,32 +398,31 @@ function NewArchiveForm() {
       setIsGenerating(false);
     }
 
-    let created;
-    try {
-      created = await createArchive({
-        type: data.type,
-        code: data.code,
-        documentDate: data.documentDate
-          ? new Date(data.documentDate).toISOString()
-          : undefined,
-        observations: data.observations || undefined,
-        grantors: data.grantors.map(cleanPerson),
-        beneficiaries: data.beneficiaries.map(cleanPerson),
-        pdf: pdfMode === "upload" ? (data.pdf as File) : photoPdf,
-      });
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        setError("code", { message: "Este código ya está en uso por un archivo activo" });
-      }
-      return;
-    }
-
-    if (!created) return;
+    // Disparar la creación sin esperar: la subida sigue en segundo plano y el
+    // hook muestra el toast de éxito/error. Así se puede volver a /archives al
+    // instante y registrar el siguiente archivo sin esperas. Mientras dura, el
+    // código queda marcado para que la lista deshabilite "Ver PDF" de esa fila.
+    const creatingCode = data.code;
+    addCreating(creatingCode);
+    createArchive({
+      type: data.type,
+      code: data.code,
+      documentDate: data.documentDate
+        ? new Date(data.documentDate).toISOString()
+        : undefined,
+      observations: data.observations || undefined,
+      grantors: data.grantors.map(cleanPerson),
+      beneficiaries: data.beneficiaries.map(cleanPerson),
+      pdf: pdfMode === "upload" ? (data.pdf as File) : photoPdf,
+    })
+      .catch(() => {
+        // el hook ya notifica el error con un toast
+      })
+      .finally(() => removeCreating(creatingCode));
 
     photoItems.forEach((i) => URL.revokeObjectURL(i.preview));
     resetStore();
-    router.push(`/archives?type=${data.type}`);
+    router.push("/archives");
   };
 
   const isBusy = isSubmitting || isGenerating;
@@ -428,16 +430,6 @@ function NewArchiveForm() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <FormProvider {...methods}>
-      {isBusy && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card px-10 py-8 shadow-xl">
-            <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <p className="text-sm font-medium text-foreground">
-              {isGenerating ? "Generando PDF..." : "Guardando..."}
-            </p>
-          </div>
-        </div>
-      )}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <PageHeader
           title="Nuevo Archivo"

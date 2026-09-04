@@ -48,11 +48,16 @@ export default function ArchiveDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { archive, isLoading, fetchArchive } = useArchives();
-  const { canEditArchive } = usePermissions();
+  const { canEditArchive, user } = usePermissions();
+  const pdfRestricted = !!user?.pdfDownloadDisabled;
   const [pdfLoading, setPdfLoading] = useState<"view" | "download" | null>(null);
 
   const handlePdf = async (mode: "view" | "download") => {
     if (!archive?.pdfUrl) return;
+    if (mode === "download" && pdfRestricted) {
+      toast.error("Descarga deshabilitada para tu usuario");
+      return;
+    }
     setPdfLoading(mode);
     try {
       if (mode === "view") {
@@ -251,21 +256,28 @@ export default function ArchiveDetailPage() {
                       )}
                       Ver
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 cursor-pointer"
-                      disabled={pdfLoading !== null}
-                      onClick={() => handlePdf("download")}
-                    >
-                      {pdfLoading === "download" ? (
-                        <span className="w-3.5 h-3.5 mr-1.5 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
-                      ) : (
-                        <Download className="w-3.5 h-3.5 mr-1.5" />
-                      )}
-                      Descargar
-                    </Button>
+                    {!pdfRestricted && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 cursor-pointer"
+                        disabled={pdfLoading !== null}
+                        onClick={() => handlePdf("download")}
+                      >
+                        {pdfLoading === "download" ? (
+                          <span className="w-3.5 h-3.5 mr-1.5 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5 mr-1.5" />
+                        )}
+                        Descargar
+                      </Button>
+                    )}
                   </div>
+                  {pdfRestricted && (
+                    <p className="text-xs text-muted-foreground">
+                      La descarga e impresión de PDF están deshabilitadas para tu usuario.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
