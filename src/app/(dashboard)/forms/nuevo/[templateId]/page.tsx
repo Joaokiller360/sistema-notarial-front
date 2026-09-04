@@ -21,6 +21,8 @@ export default function NuevoFormularioPage() {
     [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
     user?.email ||
     "Usuario";
+  // El nombre del matrizador va en MAYÚSCULAS como el resto de campos del formulario.
+  const matrizadorNombre = fullName.toLocaleUpperCase("es");
 
   useEffect(() => {
     if (!template) router.replace("/forms/plantillas");
@@ -29,9 +31,9 @@ export default function NuevoFormularioPage() {
   const initial = useMemo<UafeFormData | null>(() => {
     if (!template) return null;
     const base = template.build();
-    base.matrizadorNombre = fullName;
+    base.matrizadorNombre = matrizadorNombre;
     return base;
-  }, [template, fullName]);
+  }, [template, matrizadorNombre]);
 
   if (!template || !initial) return null;
 

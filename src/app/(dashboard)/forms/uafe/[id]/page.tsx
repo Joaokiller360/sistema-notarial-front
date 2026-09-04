@@ -9,12 +9,20 @@ import { ArrowLeft, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/common/PageHeader";
 import { UafeForm } from "@/components/forms/UafeForm";
+import { useAuthStore } from "@/store";
 import { getUafe, saveUafe, type UafeFormData, type UafeSubmission } from "@/lib/uafe-forms";
 
 export default function UafeFormDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id;
+
+  const user = useAuthStore((s) => s.user);
+  const currentUserName = (
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+    user?.email ||
+    "Usuario"
+  ).toLocaleUpperCase("es");
 
   const [sub, setSub] = useState<UafeSubmission | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,7 +101,10 @@ export default function UafeFormDetailPage() {
 
       <UafeForm
         key={editing ? "edit" : "view"}
-        initial={sub.data}
+        initial={{
+          ...sub.data,
+          matrizadorNombre: sub.data.matrizadorNombre?.trim() || currentUserName,
+        }}
         readOnly={!editing}
         headerNote={`Formulario llenado por: ${sub.filledByName}`}
         onSave={handleSave}

@@ -5,7 +5,7 @@ const API_BASE =
   "https://developer.joaobarres.dev";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["192.168.1.31"],
+  allowedDevOrigins: ["192.168.100.76"],
   images: {
     remotePatterns: [
       {

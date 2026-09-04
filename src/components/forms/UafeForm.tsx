@@ -63,6 +63,11 @@ const SECTION_CSS = `
 #uafe-print-area select,
 #uafe-print-area textarea { max-width: 100%; }
 
+/* Formularios notariales: todo en MAYÚSCULAS (los <select> no pasan por
+   cleanText, así que se fuerza por CSS en pantalla y por JS en el PDF). */
+#uafe-print-area select,
+#uafe-print-area select option { text-transform: uppercase; }
+
 /* ── Membrete ── */
 #uafe-print-area .uafe-header {
   background: #ffffff !important;
@@ -275,9 +280,10 @@ const PRINT_CSS = `
   /* Firma / uso notaría: menos espacio vertical */
   #uafe-print-area .mt-16 { margin-top: 6px !important; }
   #uafe-print-area .h-36 { height: 26px !important; }
-  #uafe-print-area .h-20 { height: 22px !important; }
+  #uafe-print-area .h-36 { height: 30px !important; }
+  #uafe-print-area .h-28 { height: 112px !important; }
   #uafe-print-area .mt-6 { margin-top: 4px !important; }
-  #uafe-print-area .uafe-firma-box { min-height: 84px !important; padding: 8px !important; }
+  #uafe-print-area .uafe-firma-box { min-height: 112px !important; padding: 8px !important; }
 
   /* ── 2 columnas para que no quede tan plano ── */
   #uafe-print-area .uafe-body { column-count: 2; column-gap: 10px; }
@@ -416,6 +422,7 @@ export function UafeForm({
         if (el instanceof HTMLSelectElement) {
           text = (el.selectedOptions[0]?.text ?? "").trim();
           if (/^seleccione/i.test(text) || /^--/.test(text)) text = "";
+          else text = text.toLocaleUpperCase("es");
         } else if (el.type === "date" && el.value) {
           const [y, m, dd] = el.value.split("-");
           text = dd && m && y ? `${dd}/${m}/${y}` : el.value;
@@ -487,7 +494,7 @@ export function UafeForm({
   }[keyof UafeFormData];
 
   const setText = (key: StrKey, raw: string, max = TXT_MAX) => {
-    set(key, cleanText(raw, { max }) as UafeFormData[StrKey]);
+    set(key, cleanText(raw, { max, upper: true }) as UafeFormData[StrKey]);
     clearErr(key);
   };
   const setEmail = (raw: string) => {
@@ -505,7 +512,7 @@ export function UafeForm({
   const setIdField = (key: "numeroId" | "repNumeroId", tipo: string, raw: string) => {
     const val =
       tipo === "pasaporte"
-        ? cleanText(raw, { max: 20 }).replace(/[^a-zA-Z0-9]/g, "")
+        ? cleanText(raw, { max: 20, upper: true }).replace(/[^A-Z0-9]/g, "")
         : digitsOnly(raw, 13);
     set(key, val);
     clearErr(key);
@@ -519,7 +526,11 @@ export function UafeForm({
     key: keyof UafeFormData["cuentaOrigen"],
     raw: string
   ) => {
-    setCuenta(which, key, key === "numero" ? digitsOnly(raw, 30) : cleanText(raw, { max: TXT_MAX }));
+    setCuenta(
+      which,
+      key,
+      key === "numero" ? digitsOnly(raw, 30) : cleanText(raw, { max: TXT_MAX, upper: true })
+    );
     clearErr(`${which}.${key}`);
   };
 
@@ -531,7 +542,9 @@ export function UafeForm({
   };
 
   const fieldErr = (k: string) =>
-    errors[k] ? <p className="mt-1 text-xs text-destructive">{errors[k]}</p> : null;
+    errors[k] ? (
+      <p className="uafe-no-print mt-1 text-xs text-destructive">{errors[k]}</p>
+    ) : null;
 
   const isNatural = d.tipoPersona === "natural";
   const showConyuge = d.estadoCivil === "casado" || d.estadoCivil === "union_libre";
@@ -624,6 +637,10 @@ export function UafeForm({
       req("pepFuncion", "La función de la PEP");
       if (d.pepTieneRelacion) req("pepAsociadoNombres", "El nombre del asociado PEP");
     }
+
+    // 8. Uso notaría
+    req("matrizadorTipo", "El tipo de trámite");
+    req("matrizadorNombre", "El nombre del matrizador");
     return e;
   };
 
@@ -658,7 +675,7 @@ export function UafeForm({
             Nivel de alerta / riesgo
           </span>
           <select
-            className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground uppercase"
             value={d.nivelRiesgo}
             disabled={dis}
             onChange={(e) =>
@@ -1497,13 +1514,22 @@ export function UafeForm({
           <section className="uafe-section">
             <h3 className={sectionTitleCls}>Declaración de licitud de fondos</h3>
             <div className="uafe-declara rounded border border-border bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground">
-              <strong className="text-foreground">LICITUD DE FONDOS.</strong> Declaro bajo juramento
-              y me responsabilizo expresa e irrevocablemente que los datos consignados en el presente
-              documento son fidedignos, y que los recursos y fondos utilizados en mis operaciones y
-              transacciones han tenido, tienen y tendrán fuente y origen lícito y permitido por las
-              leyes del Ecuador, y no provienen ni se destinarán a ninguna actividad relacionada con
-              lavado de activos o financiamiento de delitos. Eximo a la Notaría Pública Primera del
-              Cantón Esmeraldas de toda responsabilidad si esta declaración fuese falsa o errónea.
+              <strong className="text-foreground">LICITUD DE FONDOS.</strong> Declaro bajo juramento y
+              me responsabilizo expresa e irrevocablemente que los datos consignados en el presente
+              documento son fidedignos, así como también que los recursos y fondos utilizados en mis
+              operaciones y transacciones comerciales, como aquellos valores entregados han tenido,
+              tienen y tendrán fuente y origen lícito y permitido por las leyes de Ecuador, y no
+              provienen ni se destinarán a ninguna actividad relacionada con la producción, consumo,
+              comercialización y tráfico de sustancias estupefacientes y psicotrópicas, o cualquier
+              otra actividad tipificada en la ley de prevención, detección y erradicación del delito
+              de lavado de activos y del financiamiento de delitos.
+              <br />
+              <br />
+              Eximo a la Notaría Pública Primera del Cantón Esmeraldas, de toda responsabilidad,
+              inclusive respecto a terceros, si esta declaración fuese falsa o errónea y, le autorizo
+              expresamente para efectos legales el uso del presente documento. Certifico que la
+              información antes indicada es correcta y verdadera, por lo tanto se la podrá considerar
+              para todos los efectos legales.
             </div>
 
             <div className="uafe-firma-grid mt-10 flex justify-center">
@@ -1528,14 +1554,14 @@ export function UafeForm({
                 <p className="text-[11px] font-bold text-muted-foreground mb-3 uppercase">
                   Revisado por oficial de cumplimiento
                 </p>
-                <div className="h-20 border border-dashed border-foreground/30 rounded-md w-4/5 mx-auto mb-2" />
+                <div className="h-24 border border-dashed border-foreground/30 rounded-md w-4/5 mx-auto mb-2" />
                 <div className="border-t-2 border-foreground w-4/5 mx-auto pt-2" />
                 <p className="text-xs font-bold">Abg. Clever Nazareno Palma</p>
               </div>
               <div className="text-center">
-                <div className="mb-4">
+                <div className="mb-4" data-uafe-err={errors.matrizadorTipo ? "" : undefined}>
                   <p className="text-[11px] font-bold text-muted-foreground mb-1 uppercase">
-                    Tipo de trámite
+                    Tipo de trámite <span className="uafe-no-print text-destructive">*</span>
                   </p>
                   <div className="flex justify-center gap-5 text-sm font-bold">
                     {(["protocolo", "diligencial"] as const).map((t) => (
@@ -1544,26 +1570,28 @@ export function UafeForm({
                           type="checkbox"
                           checked={d.matrizadorTipo === t}
                           disabled={dis}
-                          onChange={(e) =>
-                            set("matrizadorTipo", e.target.checked ? t : "")
-                          }
+                          onChange={(e) => {
+                            set("matrizadorTipo", e.target.checked ? t : "");
+                            clearErr("matrizadorTipo");
+                          }}
                         />
                         {t === "protocolo" ? "Protocolo" : "Diligencial"}
                       </label>
                     ))}
                   </div>
+                  {fieldErr("matrizadorTipo")}
                 </div>
-                <div className="h-20 border border-dashed border-foreground/30 rounded-md w-4/5 mx-auto mb-2 mt-2" />
+                <div className="h-24 border border-dashed border-foreground/30 rounded-md w-4/5 mx-auto mb-2 mt-2" />
                 <div className="border-t-2 border-foreground w-4/5 mx-auto pt-2" />
                 <p className="text-xs font-bold">Firma / datos del matrizador</p>
                 <div className="mt-2">
-                  <input
-                    className={cn(inputCls, "text-center")}
-                    placeholder="Nombre del matrizador"
-                    value={d.matrizadorNombre}
-                    disabled={dis}
-                    onChange={(e) => setText("matrizadorNombre", e.target.value, 120)}
-                  />
+                  <p
+                    className="text-center text-sm font-bold uppercase"
+                    title="Se completa con el matrizador que generó el formulario"
+                  >
+                    {d.matrizadorNombre || "—"}
+                  </p>
+                  {fieldErr("matrizadorNombre")}
                 </div>
               </div>
             </div>

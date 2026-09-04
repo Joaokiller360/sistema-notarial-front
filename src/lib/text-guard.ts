@@ -25,6 +25,8 @@ export interface CleanTextOpts {
   max?: number;
   /** Colapsa espacios múltiples y recorta extremos. Por defecto true en texto no-email. */
   collapseSpaces?: boolean;
+  /** Convierte a MAYÚSCULAS (formularios notariales). No aplica a correos. */
+  upper?: boolean;
 }
 
 /** Limpia un valor de texto quitando caracteres bloqueados e invisibles. */
@@ -34,6 +36,7 @@ export function cleanText(value: string, opts: CleanTextOpts = {}): string {
   const collapse = opts.collapseSpaces ?? !opts.email;
   if (opts.email) s = s.replace(/\s+/g, "");
   else if (collapse) s = s.replace(/\s{2,}/g, " ");
+  if (opts.upper && !opts.email) s = s.toLocaleUpperCase("es");
   if (typeof opts.max === "number") s = s.slice(0, opts.max);
   return s;
 }
