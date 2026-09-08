@@ -59,4 +59,13 @@ export const authService = {
   unlockAccount: async (userId: string): Promise<void> => {
     await apiClient.post("/auth/unlock-account", { userId });
   },
+
+  /**
+   * Cierra la sesión activa de otro usuario (sesión única: la primera sesión
+   * gana; esto la libera para que pueda volver a entrar).
+   * Solo SUPER_ADMIN / NOTARIO. Backend: POST /auth/force-logout.
+   */
+  forceLogout: async (userId: string): Promise<void> => {
+    await apiClient.post("/auth/force-logout", { userId });
+  },
 };

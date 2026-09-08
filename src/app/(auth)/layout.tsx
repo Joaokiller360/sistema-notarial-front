@@ -17,7 +17,7 @@ export default function AuthLayout({
             Sistema de Gestión Notarial
           </h1>
           <p className="text-white/70 text-base leading-relaxed">
-            Plataforma profesional para la gestión integral de archivos y
+            Plataforma para la gestión integral de archivos y
             documentos notariales.
           </p>
 

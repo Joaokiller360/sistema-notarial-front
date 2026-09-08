@@ -97,6 +97,7 @@ export default function ArchivesPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ArchiveStatus | "">("");
   const [nacionalidad, setNacionalidad] = useState("");
+  const [year, setYear] = useState("");
   const [clientPage, setClientPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -218,7 +219,7 @@ export default function ArchivesPage() {
   // Reset client page when type / search / status change
   useEffect(() => {
     setClientPage(1);
-  }, [activeType, search, status, nacionalidad, pageSize]);
+  }, [activeType, search, status, nacionalidad, year, pageSize]);
 
   // Block print / save shortcuts while a restricted user has a PDF open
   useEffect(() => {
@@ -254,6 +255,10 @@ export default function ArchivesPage() {
       data = data.filter((a) => a.type === activeType);
     }
 
+    if (year) {
+      data = data.filter((a) => a.code.substring(0, 4) === year);
+    }
+
     if (nacionalidad) {
       data = data.filter(
         (a) =>
@@ -287,7 +292,17 @@ export default function ArchivesPage() {
     });
 
     return data;
-  }, [archives?.data, activeType, search, nacionalidad]);
+  }, [archives?.data, activeType, search, nacionalidad, year]);
+
+  // Años presentes en los archivos (prefijo YYYY del código), desc.
+  const years = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of archives?.data ?? []) {
+      const y = a.code?.substring(0, 4);
+      if (y && /^\d{4}$/.test(y)) set.add(y);
+    }
+    return Array.from(set).sort((x, y2) => Number(y2) - Number(x));
+  }, [archives?.data]);
 
   const displayData = useMemo(() => {
     const start = (clientPage - 1) * pageSize;
@@ -490,6 +505,20 @@ export default function ArchivesPage() {
             onChange={setNacionalidad}
           />
         </div>
+        <Select
+          value={year || "__all__"}
+          onValueChange={(v) => { setYear(!v || v === "__all__" ? "" : v); setClientPage(1); }}
+        >
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Año" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos los años</SelectItem>
+            {years.map((y) => (
+              <SelectItem key={y} value={y}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue />

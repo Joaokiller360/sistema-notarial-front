@@ -10,10 +10,15 @@ import type { LoginRequest } from "@/types";
 
 export function useAuth() {
   const [isLoading, setIsLoading] = useState(false);
+  // Sesión única: el backend responde 409 si ya hay una sesión activa del
+  // usuario en otro dispositivo (la PRIMERA sesión gana). La UI de login lo
+  // muestra como un aviso con botón "Reintentar".
+  const [sessionConflict, setSessionConflict] = useState(false);
   const { setAuth, clearAuth, setUser, user, isAuthenticated } = useAuthStore();
   const router = useRouter();
 
   const login = async (credentials: LoginRequest) => {
+    setSessionConflict(false);
     // Sesión única: si ya hay una sesión válida en este navegador, no permitir
     // un segundo login. Hay que cerrar sesión primero.
     const existing = tokenUtils.getAccessToken();
@@ -43,6 +48,12 @@ export function useAuth() {
       const res = (error as { response?: { status?: number; data?: { message?: string } } })
         ?.response;
       const backendMsg = res?.data?.message;
+      if (res?.status === 409) {
+        // Sesión activa en otro dispositivo. No toast: la pantalla de login
+        // muestra un aviso propio con botón "Reintentar" y conserva el formulario.
+        setSessionConflict(true);
+        throw error;
+      }
       let message: string;
       if (res?.status === 403) {
         // Cuenta bloqueada por intentos fallidos (distinto del 401 de credenciales
@@ -137,5 +148,7 @@ export function useAuth() {
     logout,
     updateProfile,
     changePassword,
+    sessionConflict,
+    clearSessionConflict: () => setSessionConflict(false),
   };
 }

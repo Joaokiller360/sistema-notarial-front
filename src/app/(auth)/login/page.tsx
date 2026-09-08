@@ -4,12 +4,20 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { Eye, EyeOff, LogIn, Building2 } from "lucide-react";
+import { Eye, EyeOff, LogIn, Building2, MonitorX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks";
 import { SESSION_NOTICE_KEY } from "@/api/axios.client";
 import { NotaryInfoBadge } from "@/components/common/NotaryInfoBadge";
@@ -22,7 +30,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, sessionConflict, clearSessionConflict } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
 
   // Aviso tras un corte de sesión forzado (p. ej. sesión única: login en otro dispositivo).
@@ -46,7 +54,14 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = (data: LoginFormData) => login(data);
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      await login(data);
+    } catch {
+      // 409 -> sessionConflict (aviso propio abajo); 401/403/429 -> toast en useAuth.
+      // El formulario y los datos se conservan.
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -68,6 +83,31 @@ export default function LoginPage() {
 
       {/* Notary info badge — visible only when notaryData exists in store */}
       <NotaryInfoBadge />
+
+      {/* Sesión única: login rechazado porque ya hay una sesión activa (409) */}
+      <Dialog
+        open={sessionConflict}
+        onOpenChange={(open) => { if (!open) clearSessionConflict(); }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MonitorX className="w-5 h-5 text-amber-500 shrink-0" />
+              No puedes iniciar sesión
+            </DialogTitle>
+            <DialogDescription>
+              Esta cuenta ya tiene una sesión abierta en otro dispositivo. Cierra
+              esa sesión, espera unos minutos, o pide a un administrador que la
+              cierre. Luego vuelve a intentarlo.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" onClick={clearSessionConflict}>
+              Entendido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} method="post" className="space-y-4" noValidate>

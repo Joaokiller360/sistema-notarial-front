@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Filter, Pencil, Trash2, ToggleLeft, ToggleRight, Ban, Lock, LockOpen } from "lucide-react";
+import { Plus, Search, Filter, Pencil, Trash2, ToggleLeft, ToggleRight, Ban, Lock, LockOpen, MonitorX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
@@ -89,6 +89,8 @@ export default function UsersPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [unlockId, setUnlockId] = useState<string | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [forceLogoutId, setForceLogoutId] = useState<string | null>(null);
+  const [isForcingLogout, setIsForcingLogout] = useState(false);
 
   const load = useCallback(() => {
     fetchUsers({ page: 1, limit: 50 });
@@ -179,6 +181,28 @@ export default function UsersPage() {
       toast.error(text || "Error al desbloquear la cuenta");
     } finally {
       setIsUnlocking(false);
+    }
+  };
+
+  const handleForceLogout = async () => {
+    if (!forceLogoutId) return;
+    if (!canUnlock()) {
+      toast.error("No tienes permiso para cerrar sesiones");
+      setForceLogoutId(null);
+      return;
+    }
+    setIsForcingLogout(true);
+    try {
+      await authService.forceLogout(forceLogoutId);
+      toast.success("Sesión cerrada. El usuario ya puede iniciar sesión.");
+      setForceLogoutId(null);
+      load();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+      const text = Array.isArray(msg) ? msg.join(" · ") : typeof msg === "string" ? msg : null;
+      toast.error(text || "Error al cerrar la sesión del usuario");
+    } finally {
+      setIsForcingLogout(false);
     }
   };
 
@@ -299,6 +323,20 @@ export default function UsersPage() {
                   )}
                 </Button>
               </span>
+            )}
+
+            {/* Cerrar sesión activa del usuario (sesión única): SUPER_ADMIN / NOTARIO */}
+            {canUnlock() && row.id !== currentUser?.id && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-foreground"
+                onClick={() => setForceLogoutId(row.id)}
+                aria-label="Cerrar sesión activa"
+                title="Cerrar sesión activa"
+              >
+                <MonitorX className="w-3.5 h-3.5" />
+              </Button>
             )}
 
             {/* Toggle Desactivar/Activar: solo visible para super_admin, deshabilitado para targets restringidos */}
@@ -431,6 +469,30 @@ export default function UsersPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!forceLogoutId}
+        onOpenChange={() => !isForcingLogout && setForceLogoutId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cerrar la sesión activa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const t = users?.data.find((u) => u.id === forceLogoutId);
+                const name = t ? `${t.firstName} ${t.lastName}` : "este usuario";
+                return `Se cerrará la sesión activa de ${name}. Tendrá que volver a iniciar sesión.`;
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isForcingLogout}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceLogout} disabled={isForcingLogout}>
+              {isForcingLogout ? "Cerrando..." : "Cerrar sesión"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

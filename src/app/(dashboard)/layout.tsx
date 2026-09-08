@@ -2,12 +2,13 @@
 
 import { AuthGuard } from "@/guards";
 import { Sidebar, Navbar, Breadcrumbs, MobileSidebar, Footer } from "@/components/layout";
-import { useTokenRefresh, useNotificationsBootstrap, useCurrentUserSync } from "@/hooks";
+import { useTokenRefresh, useNotificationsBootstrap, useCurrentUserSync, useLogoutOnUnload } from "@/hooks";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   useTokenRefresh();
   useNotificationsBootstrap();
   useCurrentUserSync();
+  useLogoutOnUnload();
   return (
     <div className="flex h-screen overflow-hidden">
       <div className="hidden md:flex">
