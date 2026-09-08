@@ -93,7 +93,7 @@ function emptyCuenta(): CuentaBancaria {
 export function emptyUafeData(): UafeFormData {
   const today = new Date().toISOString().split("T")[0];
   return {
-    lugar: "Esmeraldas",
+    lugar: "ESMERALDAS",
     fecha: today,
     hora: "",
     tipoTramite: "",

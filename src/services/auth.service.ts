@@ -51,4 +51,12 @@ export const authService = {
   }): Promise<void> => {
     await apiClient.post("/auth/change-password", payload);
   },
+
+  /**
+   * Desbloquea una cuenta bloqueada por intentos de login fallidos.
+   * Solo SUPER_ADMIN / NOTARIO. Backend: POST /auth/unlock-account.
+   */
+  unlockAccount: async (userId: string): Promise<void> => {
+    await apiClient.post("/auth/unlock-account", { userId });
+  },
 };

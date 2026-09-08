@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Filter, Pencil, Trash2, ToggleLeft, ToggleRight, Ban } from "lucide-react";
+import { Plus, Search, Filter, Pencil, Trash2, ToggleLeft, ToggleRight, Ban, Lock, LockOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { User, Role } from "@/types";
-import { usersService } from "@/services";
+import { usersService, authService } from "@/services";
 import { toast } from "sonner";
 import { extractRoleKey } from "@/utils/formatters";
 
@@ -80,10 +80,15 @@ export default function UsersPage() {
     return "allowed";
   };
 
+  // Desbloqueo de cuentas: solo SUPER_ADMIN / NOTARIO.
+  const canUnlock = () => isSuperAdmin() || isNotario();
+
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<Role | "">("");
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [unlockId, setUnlockId] = useState<string | null>(null);
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
   const load = useCallback(() => {
     fetchUsers({ page: 1, limit: 50 });
@@ -155,6 +160,28 @@ export default function UsersPage() {
     load();
   };
 
+  const handleUnlock = async () => {
+    if (!unlockId) return;
+    if (!canUnlock()) {
+      toast.error("No tienes permiso para desbloquear cuentas");
+      setUnlockId(null);
+      return;
+    }
+    setIsUnlocking(true);
+    try {
+      await authService.unlockAccount(unlockId);
+      toast.success("Cuenta desbloqueada correctamente");
+      setUnlockId(null);
+      load();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+      const text = Array.isArray(msg) ? msg.join(" · ") : typeof msg === "string" ? msg : null;
+      toast.error(text || "Error al desbloquear la cuenta");
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
   const columns: Column<User>[] = [
     {
       key: "name",
@@ -205,16 +232,32 @@ export default function UsersPage() {
       key: "isActive",
       label: "Estado",
       render: (row) => (
-        <Badge
-          variant="outline"
-          className={row.isActive
-            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-            : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-          }
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 inline-block" />
-          {row.isActive ? "Activo" : "Inactivo"}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-1">
+          <Badge
+            variant="outline"
+            className={row.isActive
+              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+              : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+            }
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 inline-block" />
+            {row.isActive ? "Activo" : "Inactivo"}
+          </Badge>
+          {row.lockedAt && (
+            <Badge
+              variant="outline"
+              className="bg-destructive/10 text-destructive border-destructive/20"
+              title={`Bloqueada por intentos fallidos${
+                typeof row.failedLoginAttempts === "number"
+                  ? ` (${row.failedLoginAttempts})`
+                  : ""
+              }`}
+            >
+              <Ban className="w-3 h-3 mr-1" />
+              Bloqueada
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -229,6 +272,35 @@ export default function UsersPage() {
           : undefined;
         return (
           <div className="flex items-center justify-end gap-1">
+            {/* Desbloquear: visible para SUPER_ADMIN / NOTARIO.
+                - Cuenta NO bloqueada: candado gris, deshabilitado, sin acción.
+                - Cuenta bloqueada: candado abierto en rojo claro, clicable. */}
+            {canUnlock() && (
+              <span
+                title={row.lockedAt ? "Desbloquear cuenta" : "La cuenta no está bloqueada"}
+                className="inline-flex"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={
+                    row.lockedAt
+                      ? "h-8 w-8 cursor-pointer bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300"
+                      : "h-8 w-8 cursor-not-allowed text-muted-foreground opacity-50"
+                  }
+                  disabled={!row.lockedAt}
+                  onClick={() => row.lockedAt && setUnlockId(row.id)}
+                  aria-label={row.lockedAt ? "Desbloquear cuenta" : "Cuenta no bloqueada"}
+                >
+                  {row.lockedAt ? (
+                    <LockOpen className="w-3.5 h-3.5" />
+                  ) : (
+                    <Lock className="w-3.5 h-3.5" />
+                  )}
+                </Button>
+              </span>
+            )}
+
             {/* Toggle Desactivar/Activar: solo visible para super_admin, deshabilitado para targets restringidos */}
             {tState !== "no_permission" && (
               <span title={toggleTooltip} className="inline-flex">
@@ -359,6 +431,25 @@ export default function UsersPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!unlockId} onOpenChange={() => !isUnlocking && setUnlockId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Desbloquear cuenta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La cuenta fue bloqueada por múltiples intentos de inicio de sesión
+              fallidos. Al desbloquearla, el contador de intentos se reinicia y el
+              usuario podrá volver a iniciar sesión.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUnlocking}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnlock} disabled={isUnlocking}>
+              {isUnlocking ? "Desbloqueando..." : "Desbloquear"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

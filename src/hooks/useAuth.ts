@@ -30,9 +30,21 @@ export function useAuth() {
           : "/dashboard";
       router.push(landing);
     } catch (error: unknown) {
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response
-          ?.data?.message || "Credenciales incorrectas";
+      const res = (error as { response?: { status?: number; data?: { message?: string } } })
+        ?.response;
+      const backendMsg = res?.data?.message;
+      let message: string;
+      if (res?.status === 403) {
+        // Cuenta bloqueada por intentos fallidos (distinto del 401 de credenciales
+        // y del 429 de rate-limit).
+        message =
+          backendMsg ||
+          "Cuenta bloqueada por múltiples intentos fallidos. Contacta a un administrador o notario para desbloquearla.";
+      } else if (res?.status === 429) {
+        message = "Demasiadas solicitudes. Espera un momento e intenta de nuevo.";
+      } else {
+        message = backendMsg || "Credenciales incorrectas";
+      }
       toast.error(message);
       throw error;
     } finally {

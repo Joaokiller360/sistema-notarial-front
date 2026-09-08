@@ -299,6 +299,9 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [nacionalidad, setNacionalidad] = useState("");
   const [page, setPage] = useState(1);
+  // true unos ms tras teclear en el buscador: muestra skeletons grises
+  // en vez del estado vacío "No hay clientes" mientras se recalcula el filtro.
+  const [searching, setSearching] = useState(false);
 
   // Modal "Ver trámites" — evita navegar a otra página
   const [viewClient, setViewClient] = useState<DerivedClient | null>(null);
@@ -372,6 +375,13 @@ export default function ClientsPage() {
   }, [clients, search, nacionalidad]);
 
   useEffect(() => { setPage(1); }, [search, nacionalidad]);
+
+  useEffect(() => {
+    if (!search.trim()) { setSearching(false); return; }
+    setSearching(true);
+    const t = setTimeout(() => setSearching(false), 250);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * PAGE_LIMIT;
@@ -648,7 +658,7 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading || searching ? (
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="p-4 space-y-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -1060,7 +1070,7 @@ export default function ClientsPage() {
                           archive={a}
                           onView={() => {
                             setViewClient(null);
-                            router.push(`/archives/${a.id}`);
+                            router.push(`/archives/${a.code || a.id}`);
                           }}
                         />
                       ))}
@@ -1086,7 +1096,7 @@ export default function ClientsPage() {
                           archive={a}
                           onView={() => {
                             setViewClient(null);
-                            router.push(`/archives/${a.id}`);
+                            router.push(`/archives/${a.code || a.id}`);
                           }}
                         />
                       ))}

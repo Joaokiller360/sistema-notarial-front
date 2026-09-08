@@ -30,6 +30,46 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+/** Aviso que la página de login lee tras un corte de sesión forzado. */
+export const SESSION_NOTICE_KEY = "notaria_session_notice";
+
+const SESSION_SUPERSEDED_RE = /sesi[oó]n iniciada en otro dispositivo/i;
+const SESSION_SUPERSEDED_NOTICE =
+  "Tu sesión se cerró porque iniciaste sesión en otro dispositivo.";
+
+function errorMessage(error: AxiosError): string {
+  const data = error.response?.data as { message?: unknown } | undefined;
+  const m = data?.message;
+  if (Array.isArray(m)) return m.join(" · ");
+  return typeof m === "string" ? m : "";
+}
+
+/** Sesión única (backend): 401 con el mensaje de "otro dispositivo". */
+function isSessionSuperseded(error: AxiosError): boolean {
+  return (
+    error.response?.status === 401 && SESSION_SUPERSEDED_RE.test(errorMessage(error))
+  );
+}
+
+/** Limpia tokens + cookie y vuelve a /login, opcionalmente con un aviso. */
+function forceLogout(notice?: string): void {
+  tokenUtils.clearTokens();
+  if (typeof window === "undefined") return;
+  document.cookie =
+    "notaria_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict";
+  if (notice) {
+    try {
+      sessionStorage.setItem(SESSION_NOTICE_KEY, notice);
+    } catch {
+      // sessionStorage no disponible: seguimos con la redirección igual
+    }
+  }
+  window.location.href = "/login";
+}
+
+const isAuthEndpoint = (url?: string): boolean =>
+  !!url && (url.includes("/auth/login") || url.includes("/auth/refresh"));
+
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = tokenUtils.getAccessToken();
@@ -60,13 +100,23 @@ apiClient.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Sesión única: el backend cortó esta sesión (login en otro dispositivo).
+    // No entrar al loop de refresh — fallaría igual. Limpiar y volver a /login.
+    if (isSessionSuperseded(error)) {
+      forceLogout(SESSION_SUPERSEDED_NOTICE);
+      return Promise.reject(error);
+    }
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       const refreshToken = tokenUtils.getRefreshToken();
       const userId = getUserIdFromToken();
 
       if (!refreshToken || !userId) {
-        tokenUtils.clearTokens();
-        if (typeof window !== "undefined") window.location.href = "/login";
+        forceLogout();
         return Promise.reject(error);
       }
 
@@ -100,8 +150,11 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        tokenUtils.clearTokens();
-        if (typeof window !== "undefined") window.location.href = "/login";
+        forceLogout(
+          isSessionSuperseded(refreshError as AxiosError)
+            ? SESSION_SUPERSEDED_NOTICE
+            : undefined
+        );
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -192,13 +245,23 @@ apiFormClient.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Sesión única: el backend cortó esta sesión (login en otro dispositivo).
+    // No entrar al loop de refresh — fallaría igual. Limpiar y volver a /login.
+    if (isSessionSuperseded(error)) {
+      forceLogout(SESSION_SUPERSEDED_NOTICE);
+      return Promise.reject(error);
+    }
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       const refreshToken = tokenUtils.getRefreshToken();
       const userId = getUserIdFromToken();
 
       if (!refreshToken || !userId) {
-        tokenUtils.clearTokens();
-        if (typeof window !== "undefined") window.location.href = "/login";
+        forceLogout();
         return Promise.reject(error);
       }
 
@@ -232,8 +295,11 @@ apiFormClient.interceptors.response.use(
         return apiFormClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        tokenUtils.clearTokens();
-        if (typeof window !== "undefined") window.location.href = "/login";
+        forceLogout(
+          isSessionSuperseded(refreshError as AxiosError)
+            ? SESSION_SUPERSEDED_NOTICE
+            : undefined
+        );
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

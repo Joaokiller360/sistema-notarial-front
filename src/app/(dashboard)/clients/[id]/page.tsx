@@ -238,7 +238,7 @@ export default function ClientDetailPage() {
                     <ArchiveCard
                       key={a.id}
                       archive={a}
-                      onView={() => router.push(`/archives/${a.id}`)}
+                      onView={() => router.push(`/archives/${a.code || a.id}`)}
                     />
                   ))}
                 </div>
@@ -265,7 +265,7 @@ export default function ClientDetailPage() {
                     <ArchiveCard
                       key={a.id}
                       archive={a}
-                      onView={() => router.push(`/archives/${a.id}`)}
+                      onView={() => router.push(`/archives/${a.code || a.id}`)}
                     />
                   ))}
                 </div>

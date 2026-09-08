@@ -5,11 +5,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
 import { Eye, EyeOff, LogIn, Building2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks";
+import { SESSION_NOTICE_KEY } from "@/api/axios.client";
 import { NotaryInfoBadge } from "@/components/common/NotaryInfoBadge";
 
 const loginSchema = z.object({
@@ -22,6 +24,19 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const { login, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+
+  // Aviso tras un corte de sesión forzado (p. ej. sesión única: login en otro dispositivo).
+  useEffect(() => {
+    try {
+      const notice = sessionStorage.getItem(SESSION_NOTICE_KEY);
+      if (notice) {
+        sessionStorage.removeItem(SESSION_NOTICE_KEY);
+        toast.error(notice);
+      }
+    } catch {
+      // sessionStorage no disponible: sin aviso
+    }
+  }, []);
 
   const {
     register,

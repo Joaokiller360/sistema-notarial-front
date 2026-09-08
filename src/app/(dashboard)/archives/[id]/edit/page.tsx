@@ -336,6 +336,7 @@ export default function EditArchivePage() {
   };
 
   const onSubmit = async (data: ArchiveFormData) => {
+    if (!archive) return;
     if (pdfMode === "photos" && photoItems.length === 0) {
       toast.error("Agrega al menos una imagen para generar el PDF.");
       return;
@@ -395,7 +396,8 @@ export default function EditArchivePage() {
 
     let result;
     try {
-      result = await updateArchive(id, {
+      // `id` de la URL puede ser el `code`; para el PATCH se usa el UUID real.
+      result = await updateArchive(archive.id, {
         type: data.type,
         code: data.code,
         documentDate: data.documentDate
@@ -412,7 +414,7 @@ export default function EditArchivePage() {
 
     if (!result) return;
 
-    router.push(`/archives/${id}`);
+    router.push(`/archives/${result.code || archive.code || archive.id}`);
   };
 
   const isBusy = isSubmitting || isGenerating;

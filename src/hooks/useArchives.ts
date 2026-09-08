@@ -117,7 +117,8 @@ export function useArchives() {
   const fetchArchive = useCallback(async (id: string) => {
     setIsLoading(true);
     try {
-      const data = await archivesService.getById(id);
+      // `id` puede ser el UUID o el `code` del archivo (URL amigable).
+      const data = await archivesService.getByIdOrCode(id);
       setArchive(data);
       return data;
     } catch {

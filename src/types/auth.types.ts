@@ -10,6 +10,10 @@ export interface User {
   isActive: boolean;
   /** Si es true, este usuario no puede descargar ni imprimir los PDF de archivos. */
   pdfDownloadDisabled?: boolean;
+  /** Fecha ISO en que la cuenta fue bloqueada por intentos fallidos; null = no bloqueada. */
+  lockedAt?: string | null;
+  /** Intentos de login fallidos consecutivos (se resetea en un login correcto). */
+  failedLoginAttempts?: number;
   createdAt?: string;
   updatedAt?: string;
 }

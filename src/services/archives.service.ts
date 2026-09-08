@@ -42,6 +42,29 @@ export const archivesService = {
     return data.data;
   },
 
+  /**
+   * Resuelve un archivo por UUID o por su `code` (p. ej. "19940801001P00161").
+   * Si el parámetro no es un UUID se busca el `code` en el listado para obtener
+   * el id real y luego se pide el detalle completo.
+   */
+  getByIdOrCode: async (idOrCode: string): Promise<Archive> => {
+    const UUID_RE =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (UUID_RE.test(idOrCode)) {
+      return archivesService.getById(idOrCode);
+    }
+    const list = await archivesService.getAll({ search: idOrCode, limit: 20 });
+    const match =
+      list.data.find((a) => a.code === idOrCode) ??
+      list.data.find(
+        (a) => a.code?.toLowerCase() === idOrCode.toLowerCase()
+      );
+    if (!match) {
+      throw new Error(`Archivo con código ${idOrCode} no encontrado`);
+    }
+    return archivesService.getById(match.id);
+  },
+
   create: async (payload: CreateArchiveRequest): Promise<Archive> => {
     const { data } = await apiClient.post<BackendApiResponse<Archive>>(
       "/archives",

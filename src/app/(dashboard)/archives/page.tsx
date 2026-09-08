@@ -42,7 +42,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { Archive, ArchiveStatus, ArchiveType } from "@/types";
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 500];
 
 const STATUS_OPTIONS: { value: ArchiveStatus | ""; label: string }[] = [
   { value: "", label: "Todos los estados" },
@@ -410,7 +410,7 @@ export default function ArchivesPage() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 cursor-pointer"
-              onClick={() => router.push(`/archives/${row.id}/edit`)}
+              onClick={() => router.push(`/archives/${row.code || row.id}/edit`)}
             >
               <Pencil className="w-3.5 h-3.5" />
             </Button>
