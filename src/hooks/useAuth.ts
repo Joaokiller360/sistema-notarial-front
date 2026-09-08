@@ -14,6 +14,16 @@ export function useAuth() {
   const router = useRouter();
 
   const login = async (credentials: LoginRequest) => {
+    // Sesión única: si ya hay una sesión válida en este navegador, no permitir
+    // un segundo login. Hay que cerrar sesión primero.
+    const existing = tokenUtils.getAccessToken();
+    if (isAuthenticated && existing && !tokenUtils.isTokenExpired(existing)) {
+      toast.error(
+        "Ya tienes una sesión activa. Cierra sesión antes de iniciar con otra cuenta."
+      );
+      router.push("/dashboard");
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await authService.login(credentials);

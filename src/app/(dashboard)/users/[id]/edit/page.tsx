@@ -230,7 +230,7 @@ export default function EditUserPage() {
         </Button>
       </PageHeader>
 
-      <div className="max-w-2xl">
+      <div className="max-w-2xl mx-auto">
         <Card className="bg-card border-border">
           <CardHeader className="pb-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -310,7 +310,7 @@ export default function EditUserPage() {
                   value={watch("roleType") ?? ""}
                   onValueChange={(v) => setValue("roleType", v ?? "")}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecciona un rol" />
                   </SelectTrigger>
                   <SelectContent>
@@ -356,7 +356,7 @@ export default function EditUserPage() {
                   <Tooltip>
                     <TooltipTrigger render={<div className="cursor-not-allowed" />}>
                       <Select value={targetUser?.isActive ? "true" : "false"} disabled>
-                        <SelectTrigger className="opacity-60 pointer-events-none">
+                        <SelectTrigger className="w-full opacity-60 pointer-events-none">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
