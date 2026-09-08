@@ -506,14 +506,14 @@ export default function ArchivesPage() {
           />
         </div>
         <Select
-          value={year || "__all__"}
-          onValueChange={(v) => { setYear(!v || v === "__all__" ? "" : v); setClientPage(1); }}
+          value={year || "Todos los años"}
+          onValueChange={(v) => { setYear(!v || v === "Todos los años" ? "" : v); setClientPage(1); }}
         >
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder="Año" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">Todos los años</SelectItem>
+            <SelectItem value="Todos los años">Todos los años</SelectItem>
             {years.map((y) => (
               <SelectItem key={y} value={y}>{y}</SelectItem>
             ))}
