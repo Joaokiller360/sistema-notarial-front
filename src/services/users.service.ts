@@ -11,6 +11,19 @@ import type {
 
 type RawUser = User & { userRoles?: { role?: { type?: string; name?: string } }[] };
 
+/**
+ * El backend usa `canDownloadPdf` (positivo); el front usa `pdfDownloadDisabled`
+ * (negativo). Al enviar create/update mandamos AMBAS claves para no depender de
+ * cuál acepte el backend. `normalizeUser` ya lee las dos al recibir.
+ */
+function withPdfFlag<T extends { pdfDownloadDisabled?: boolean }>(payload: T): T {
+  if (typeof payload.pdfDownloadDisabled !== "boolean") return payload;
+  return {
+    ...payload,
+    canDownloadPdf: !payload.pdfDownloadDisabled,
+  } as T & { canDownloadPdf: boolean };
+}
+
 function normalizeRoles(u: RawUser): Role[] {
   // Backend returns userRoles: [{ role: { id, type, name } }]
   if (Array.isArray(u.userRoles) && u.userRoles.length > 0) {
@@ -103,7 +116,7 @@ export const usersService = {
   create: async (payload: CreateUserRequest): Promise<User> => {
     const { data } = await apiClient.post<BackendApiResponse<User>>(
       "/users",
-      payload
+      withPdfFlag(payload)
     );
     return normalizeUser(data.data as RawUser);
   },
@@ -111,7 +124,7 @@ export const usersService = {
   update: async (id: string, payload: UpdateUserRequest): Promise<User> => {
     const { data } = await apiClient.patch<BackendApiResponse<User>>(
       `/users/${id}`,
-      payload
+      withPdfFlag(payload)
     );
     return normalizeUser(data.data as RawUser);
   },

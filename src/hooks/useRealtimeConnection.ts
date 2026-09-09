@@ -5,11 +5,15 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store";
 import { useNotificationStore } from "@/store/notification.store";
 import { useNewsStore } from "@/store/news.store";
+import { authService } from "@/services";
 import { tokenUtils } from "@/utils/token";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 import { stripHtml } from "@/lib/html";
 import { forceLogout, SESSION_SUPERSEDED_NOTICE } from "@/api/axios.client";
 import type { News, Notification, Task, TaskStatus } from "@/types";
+
+const ACCOUNT_DEACTIVATED_NOTICE =
+  "Tu cuenta fue desactivada. Contacta al administrador.";
 
 /* ── Payloads (shapes confirmados por backend) ─────────── */
 
@@ -59,6 +63,12 @@ interface NewsPublishedPayload {
 
 interface NewsDeletedPayload {
   id: string;
+}
+
+interface PermissionsUpdatedPayload {
+  userId: string;
+  reason?: "role_changed" | "permission_granted" | "permission_revoked";
+  updatedAt?: string;
 }
 
 /* ── Mapeos ───────────────────────────────────────────── */
@@ -152,6 +162,52 @@ export function useRealtimeConnection() {
       useNewsStore.getState().remove(payload.id);
     };
 
+    /* permissions:updated → cambiaron mi rol/permisos. La fuente de verdad es
+       GET /auth/me; el payload es solo informativo. Debounce por si llegan
+       varios seguidos al editar un rol. */
+    let meTimer: ReturnType<typeof setTimeout> | null = null;
+    const refreshMe = () => {
+      authService
+        .getMe()
+        .then((fresh) => {
+          const current = useAuthStore.getState().user;
+          if (!current || current.id !== fresh.id) return;
+
+          const raw = fresh as typeof fresh & { canDownloadPdf?: boolean };
+          const pdfDownloadDisabled =
+            typeof raw.pdfDownloadDisabled === "boolean"
+              ? raw.pdfDownloadDisabled
+              : typeof raw.canDownloadPdf === "boolean"
+                ? !raw.canDownloadPdf
+                : current.pdfDownloadDisabled;
+
+          useAuthStore.getState().setUser({
+            ...current,
+            ...fresh,
+            roles: fresh.roles ?? current.roles,
+            permissions: fresh.permissions ?? current.permissions,
+            pdfDownloadDisabled,
+          });
+          toast.info("Tus permisos fueron actualizados");
+        })
+        .catch(() => {
+          // 401 (cuenta desactivada / sesión caída) ya lo maneja el interceptor
+        });
+    };
+    const onPermissionsUpdated = (_payload: PermissionsUpdatedPayload) => {
+      if (meTimer) clearTimeout(meTimer);
+      meTimer = setTimeout(refreshMe, 400);
+    };
+
+    /* account:deactivated → logout local inmediato. El backend cierra el
+       socket justo después; no reconectar ni pegarle a /auth/me (daría 401). */
+    const onAccountDeactivated = () => {
+      if (meTimer) clearTimeout(meTimer);
+      useAuthStore.getState().clearAuth();
+      disconnectSocket();
+      forceLogout(ACCOUNT_DEACTIVATED_NOTICE);
+    };
+
     /* Sesión invalidada por el server (login en otro dispositivo,
        force-logout de admin, cambio/reset de contraseña). */
     const onDisconnect = (reason: string) => {
@@ -172,6 +228,8 @@ export function useRealtimeConnection() {
     socket.on("notification:read", onNotificationRead);
     socket.on("news:published", onNewsPublished);
     socket.on("news:deleted", onNewsDeleted);
+    socket.on("permissions:updated", onPermissionsUpdated);
+    socket.on("account:deactivated", onAccountDeactivated);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
 
@@ -183,8 +241,11 @@ export function useRealtimeConnection() {
       socket.off("notification:read", onNotificationRead);
       socket.off("news:published", onNewsPublished);
       socket.off("news:deleted", onNewsDeleted);
+      socket.off("permissions:updated", onPermissionsUpdated);
+      socket.off("account:deactivated", onAccountDeactivated);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
+      if (meTimer) clearTimeout(meTimer);
       disconnectSocket();
     };
   }, [isAuthenticated, hasHydrated]);
