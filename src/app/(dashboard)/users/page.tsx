@@ -413,8 +413,8 @@ export default function UsersPage() {
           />
         </div>
         <Select
-          value={role || "__all__"}
-          onValueChange={(v) => { setRole(v === "__all__" ? "" : v as Role); setPage(1); }}
+          value={role || "Todos los roles"}
+          onValueChange={(v) => { setRole(v === "Todos los roles" ? "" : v as Role); setPage(1); }}
         >
           <SelectTrigger className="w-48">
             <Filter className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
@@ -422,7 +422,7 @@ export default function UsersPage() {
           </SelectTrigger>
           <SelectContent>
             {ROLE_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value || "__all__"} value={opt.value || "__all__"}>
+              <SelectItem key={opt.value || "Todos los roles"} value={opt.value || "Todos los roles"}>
                 {opt.label}
               </SelectItem>
             ))}
