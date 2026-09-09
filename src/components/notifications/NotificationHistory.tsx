@@ -28,6 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/common/Pagination";
 import { useNotifications } from "@/hooks";
+import { stripHtml } from "@/lib/html";
 import type { NotificationType } from "@/types";
 
 const TYPE_CONFIG: Record<
@@ -271,7 +272,7 @@ export function NotificationHistory() {
                   </TableCell>
                   <TableCell className="py-3.5 max-w-[200px]">
                     <p className="text-sm text-foreground truncate">
-                      {n.subject}
+                      {stripHtml(n.subject)}
                     </p>
                   </TableCell>
                   <TableCell className="py-3.5 hidden sm:table-cell">

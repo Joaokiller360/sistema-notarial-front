@@ -1,3 +1,5 @@
+import { sanitizeRichHtml, stripHtml } from "@/lib/html";
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -57,10 +59,10 @@ export function newsEmail(news: { id: string; title: string; description: string
 
   return base(`
     <p class="label">Nueva Noticia Publicada</p>
-    <p style="font-size:20px;font-weight:700;color:#18181b;margin:0 0 20px;">${escapeHtml(news.title)}</p>
+    <p style="font-size:20px;font-weight:700;color:#18181b;margin:0 0 20px;">${escapeHtml(stripHtml(news.title))}</p>
     <hr />
     <div style="font-size:14px;color:#27272a;line-height:1.7;">
-      ${escapeHtml(news.description)}
+      ${sanitizeRichHtml(news.description)}
     </div>
     <hr />
     <a href="${appUrl}/news/${safeId}" class="btn">Ver noticia en el sistema →</a>
@@ -85,7 +87,7 @@ export function taskEmail(task: {
     <span class="badge ${priorityClass}">Prioridad ${escapeHtml(task.priority)}</span>
     <hr />
     <p class="label">Descripción</p>
-    <p class="value">${escapeHtml(task.description)}</p>
+    <p class="value">${escapeHtml(stripHtml(task.description))}</p>
     <p class="label">Asignado por</p>
     <p class="value">${escapeHtml(task.senderName)}</p>
     <p class="label">Fecha límite</p>
@@ -108,7 +110,7 @@ export function notificationEmail(notif: {
     <span class="badge ${typeClass}">${escapeHtml(notif.type)}</span>
     <hr />
     <p class="label">Mensaje</p>
-    <p class="value">${escapeHtml(notif.message)}</p>
+    <p class="value">${escapeHtml(stripHtml(notif.message))}</p>
     <p class="label">Enviado por</p>
     <p class="value">${escapeHtml(notif.senderName)}</p>
     <a href="${APP_URL}/notifications" class="btn">Ver notificación →</a>

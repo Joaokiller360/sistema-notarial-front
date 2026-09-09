@@ -1,4 +1,5 @@
 import { apiClient, apiFormClient } from "@/api/axios.client";
+import { stripHtml } from "@/lib/html";
 import type {
   News,
   CreateNewsRequest,
@@ -21,7 +22,15 @@ function fixImageUrl(url?: string): string | undefined {
 }
 
 function normalizeNews(n: News): News {
-  return { ...n, imageUrl: fixImageUrl(n.imageUrl) };
+  // El título es texto plano por contrato; algunos registros llegan con HTML
+  // del editor (`<p><strong>…</strong></p>`). Se limpia aquí, en el único
+  // punto de entrada, para que lista/detalle/dashboard/store lo reciban limpio.
+  // `description` se mantiene como HTML (se renderiza con `sanitizeRichHtml`).
+  return {
+    ...n,
+    title: stripHtml(n.title),
+    imageUrl: fixImageUrl(n.imageUrl),
+  };
 }
 
 export const newsService = {
@@ -49,7 +58,12 @@ export const newsService = {
       };
     }
 
-    return body?.data ?? body;
+    // Fallback: forma inesperada. Igual normalizamos lo que se pueda.
+    const fallback = (body?.data ?? body) as Partial<PaginatedNews> | undefined;
+    if (fallback && Array.isArray(fallback.data)) {
+      return { ...(fallback as PaginatedNews), data: fallback.data.map(normalizeNews) };
+    }
+    return { data: [], total: 0, page: 1, limit: 10, totalPages: 0 };
   },
 
   getById: async (id: string): Promise<News> => {

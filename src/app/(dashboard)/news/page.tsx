@@ -18,10 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useNews, usePermissions } from "@/hooks";
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
+import { stripHtml } from "@/lib/html";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("es-EC", {

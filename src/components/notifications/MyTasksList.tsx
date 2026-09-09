@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { useNotifications } from "@/hooks";
 import { usePermissions } from "@/hooks";
+import { stripHtml } from "@/lib/html";
 import type { Task, TaskStatus, TaskPriority } from "@/types";
 
 /* ── Config ───────────────────────────────────────────── */
@@ -160,7 +161,7 @@ export function MyTasksList() {
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex items-start justify-between gap-3">
                       <p className={`text-sm leading-snug ${!t.readByRecipient && view === "received" ? "font-semibold" : "font-medium"} text-foreground`}>
-                        {t.title}
+                        {stripHtml(t.title)}
                       </p>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {overdue && (
@@ -174,7 +175,7 @@ export function MyTasksList() {
                       </div>
                     </div>
 
-                    <p className="text-xs text-muted-foreground line-clamp-1">{t.description}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{stripHtml(t.description)}</p>
 
                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1">
@@ -239,7 +240,7 @@ export function MyTasksList() {
                     )}
                   </div>
                   <SheetTitle className="text-base font-semibold leading-snug pr-2">
-                    {selected.title}
+                    {stripHtml(selected.title)}
                   </SheetTitle>
                 </div>
 
@@ -271,7 +272,7 @@ export function MyTasksList() {
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                   <div>
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descripción</p>
-                    <p className="text-sm text-foreground leading-relaxed">{selected.description}</p>
+                    <p className="text-sm text-foreground leading-relaxed">{stripHtml(selected.description)}</p>
                   </div>
 
                   {/* Attachment */}

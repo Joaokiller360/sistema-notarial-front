@@ -16,6 +16,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useNotifications } from "@/hooks";
+import { stripHtml } from "@/lib/html";
 import type { Notification, NotificationType } from "@/types";
 
 const TYPE_CONFIG: Record<
@@ -144,7 +145,7 @@ export function NotificationInbox() {
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-start justify-between gap-3">
                         <p className={`text-sm leading-snug ${n.read ? "font-normal" : "font-semibold"} text-foreground`}>
-                          {n.subject}
+                          {stripHtml(n.subject)}
                         </p>
                         <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0 mt-0.5">
                           {formatDateShort(n.sentAt)}
@@ -160,7 +161,7 @@ export function NotificationInbox() {
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground line-clamp-1 leading-relaxed">
-                        {n.message}
+                        {stripHtml(n.message)}
                       </p>
                     </div>
 
@@ -203,7 +204,7 @@ export function NotificationInbox() {
                   </span>
                 </div>
                 <SheetTitle className="text-base font-semibold leading-snug text-foreground pr-2">
-                  {selected.subject}
+                  {stripHtml(selected.subject)}
                 </SheetTitle>
               </div>
 
@@ -244,7 +245,7 @@ export function NotificationInbox() {
                   <Tag className="w-3 h-3" />Mensaje
                 </p>
                 <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                  {selected.message}
+                  {stripHtml(selected.message)}
                 </p>
               </div>
 

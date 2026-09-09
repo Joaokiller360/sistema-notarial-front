@@ -3,10 +3,21 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { newsService, usersService } from "@/services";
+import { useNewsStore } from "@/store/news.store";
 import type { News, PaginatedNews, CreateNewsRequest, NewsFilters } from "@/types";
 
 export function useNews() {
-  const [news, setNews] = useState<PaginatedNews | null>(null);
+  // Lista en store compartido → altas/bajas (locales o por WebSocket) se ven
+  // en todos los consumidores a la vez.
+  const items = useNewsStore((s) => s.items);
+  const total = useNewsStore((s) => s.total);
+  const loaded = useNewsStore((s) => s.loaded);
+  const [meta, setMeta] = useState({ page: 1, limit: 50, totalPages: 0 });
+
+  const news: PaginatedNews | null = loaded
+    ? { data: items, total, page: meta.page, limit: meta.limit, totalPages: meta.totalPages }
+    : null;
+
   const [currentNews, setCurrentNews] = useState<News | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingOne, setIsLoadingOne] = useState(true);
@@ -16,9 +27,11 @@ export function useNews() {
     setIsLoading(true);
     try {
       const data = await newsService.getAll(filters);
-      setNews(data);
+      useNewsStore.getState().setAll(data.data, data.total);
+      setMeta({ page: data.page, limit: data.limit, totalPages: data.totalPages });
     } catch {
-      setNews({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
+      useNewsStore.getState().setAll([], 0);
+      setMeta({ page: 1, limit: 50, totalPages: 0 });
     } finally {
       setIsLoading(false);
     }
@@ -41,6 +54,7 @@ export function useNews() {
     setIsSubmitting(true);
     try {
       const data = await newsService.create(payload);
+      if (data?.id) useNewsStore.getState().prepend(data);
       toast.success("Noticia publicada exitosamente");
 
       if (data?.id) {
@@ -95,9 +109,7 @@ export function useNews() {
   const deleteNews = async (id: string): Promise<boolean> => {
     try {
       await newsService.delete(id);
-      setNews((prev) =>
-        prev ? { ...prev, data: prev.data.filter((n) => n.id !== id), total: prev.total - 1 } : prev
-      );
+      useNewsStore.getState().remove(id);
       toast.success("Noticia eliminada");
       return true;
     } catch (err: unknown) {

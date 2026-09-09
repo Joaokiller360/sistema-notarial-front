@@ -4,10 +4,12 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store";
 import { useNotificationStore } from "@/store/notification.store";
+import { useNewsStore } from "@/store/news.store";
 import { tokenUtils } from "@/utils/token";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { stripHtml } from "@/lib/html";
 import { forceLogout, SESSION_SUPERSEDED_NOTICE } from "@/api/axios.client";
-import type { Notification, Task, TaskStatus } from "@/types";
+import type { News, Notification, Task, TaskStatus } from "@/types";
 
 /* ── Payloads (shapes confirmados por backend) ─────────── */
 
@@ -55,10 +57,24 @@ interface NewsPublishedPayload {
   createdAt: string;
 }
 
+interface NewsDeletedPayload {
+  id: string;
+}
+
 /* ── Mapeos ───────────────────────────────────────────── */
 
 function toTask(p: TaskAssignedPayload): Task {
   return { ...p, attachment: p.attachment ?? undefined };
+}
+
+function toNews(p: NewsPublishedPayload): News {
+  return {
+    id: p.id,
+    title: stripHtml(p.title),
+    description: p.description,
+    imageUrl: p.imageUrl ?? undefined,
+    createdAt: p.createdAt,
+  };
 }
 
 /**
@@ -99,7 +115,7 @@ export function useRealtimeConnection() {
       if (store().notifications.some((n) => n.id === payload.id)) return;
       store().prependNotification(payload);
       const urgent = payload.type === "URGENTE" || payload.type === "ALERTA";
-      (urgent ? toast.warning : toast.info)(payload.subject);
+      (urgent ? toast.warning : toast.info)(stripHtml(payload.subject));
     };
 
     /* notification:read → el destinatario marcó como leída una notificación
@@ -117,8 +133,9 @@ export function useRealtimeConnection() {
       });
     };
 
-    /* news:published → aviso liviano con enlace a /news */
+    /* news:published → alta en la lista + aviso liviano con enlace a /news */
     const onNewsPublished = (payload: NewsPublishedPayload) => {
+      useNewsStore.getState().prepend(toNews(payload));
       toast.info("Nueva noticia publicada", {
         description: payload.title,
         action: {
@@ -128,6 +145,11 @@ export function useRealtimeConnection() {
           },
         },
       });
+    };
+
+    /* news:deleted → un admin borró una noticia: quítala de la lista en vivo */
+    const onNewsDeleted = (payload: NewsDeletedPayload) => {
+      useNewsStore.getState().remove(payload.id);
     };
 
     /* Sesión invalidada por el server (login en otro dispositivo,
@@ -149,6 +171,7 @@ export function useRealtimeConnection() {
     socket.on("notification:new", onNotificationNew);
     socket.on("notification:read", onNotificationRead);
     socket.on("news:published", onNewsPublished);
+    socket.on("news:deleted", onNewsDeleted);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
 
@@ -159,6 +182,7 @@ export function useRealtimeConnection() {
       socket.off("notification:new", onNotificationNew);
       socket.off("notification:read", onNotificationRead);
       socket.off("news:published", onNewsPublished);
+      socket.off("news:deleted", onNewsDeleted);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
       disconnectSocket();
