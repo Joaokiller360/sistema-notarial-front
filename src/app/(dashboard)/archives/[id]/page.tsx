@@ -53,6 +53,8 @@ export default function ArchiveDetailPage() {
   const [serverPdfRestricted, setServerPdfRestricted] = useState(false);
   const pdfRestricted = !!user?.pdfDownloadDisabled || serverPdfRestricted;
   const [pdfLoading, setPdfLoading] = useState<"view" | "download" | null>(null);
+  // Vista previa embebida (usuario restringido: no se abre en pestaña nueva).
+  const [pdfInlineUrl, setPdfInlineUrl] = useState<string | null>(null);
 
   const handlePdf = async (mode: "view" | "download") => {
     if (!archive?.pdfUrl) return;
@@ -63,19 +65,22 @@ export default function ArchiveDetailPage() {
     setPdfLoading(mode);
     try {
       if (mode === "view") {
-        // La URL firmada del backend viene con disposición "attachment" por
-        // defecto (solo es "inline" si el usuario tiene pdfDownloadDisabled),
-        // así que abrirla directamente dispara una descarga en vez de
-        // previsualizar. Se trae como blob y se abre como object URL local,
-        // que el navegador siempre muestra con su visor de PDF integrado.
-        const [{ downloadRestricted }, blob] = await Promise.all([
-          archivesService.getPdfUrl(archive.pdfUrl),
-          archivesService.downloadPdf(archive.pdfUrl),
-        ]);
+        const { url, downloadRestricted } = await archivesService.getPdfUrl(archive.pdfUrl);
         if (downloadRestricted) setServerPdfRestricted(true);
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, "_blank", "noopener,noreferrer");
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+
+        if (pdfRestricted || downloadRestricted) {
+          // Restringido: `url` viene inline (TTL 60 s). Se muestra embebida en
+          // la página — nada de pestaña nueva ni de bajar los bytes (el
+          // endpoint de descarga responde 403 para este usuario).
+          setPdfInlineUrl(url);
+        } else {
+          // Normal: la URL firmada es "attachment"; se trae como blob y se abre
+          // en pestaña nueva con el visor integrado del navegador.
+          const blob = await archivesService.downloadPdf(archive.pdfUrl);
+          const blobUrl = URL.createObjectURL(blob);
+          window.open(blobUrl, "_blank", "noopener,noreferrer");
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        }
       } else {
         const blob = await archivesService.downloadPdf(archive.pdfUrl);
         const blobUrl = URL.createObjectURL(blob);
@@ -99,6 +104,27 @@ export default function ArchiveDetailPage() {
   useEffect(() => {
     if (id) fetchArchive(id);
   }, [id, fetchArchive]);
+
+  // Con la vista previa embebida abierta y usuario restringido: bloquear
+  // atajos de impresión/guardado.
+  useEffect(() => {
+    if (!pdfRestricted || !pdfInlineUrl) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (k === "p" || k === "s")) {
+        e.preventDefault();
+        e.stopPropagation();
+        toast.error("Impresión y descarga deshabilitadas para tu usuario");
+      }
+    };
+    const onBeforePrint = (e: Event) => e.preventDefault();
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("beforeprint", onBeforePrint);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("beforeprint", onBeforePrint);
+    };
+  }, [pdfRestricted, pdfInlineUrl]);
 
   if (isLoading) return <PageLoader />;
 
@@ -290,6 +316,19 @@ export default function ArchiveDetailPage() {
                     <p className="text-xs text-muted-foreground">
                       La descarga e impresión de PDF están deshabilitadas para tu usuario.
                     </p>
+                  )}
+
+                  {pdfInlineUrl && (
+                    <div
+                      className="mt-2 h-[70vh] w-full rounded-lg border border-border bg-muted/20 overflow-hidden"
+                      onContextMenu={(e) => { if (pdfRestricted) e.preventDefault(); }}
+                    >
+                      <iframe
+                        src={pdfRestricted ? `${pdfInlineUrl}#toolbar=0&navpanes=0` : pdfInlineUrl}
+                        title={archive.pdfFileName || "documento.pdf"}
+                        className="h-full w-full"
+                      />
+                    </div>
                   )}
                 </div>
               ) : (

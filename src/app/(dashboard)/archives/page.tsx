@@ -111,6 +111,9 @@ export default function ArchivesPage() {
   // PDF-only modal
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pdfViewUrl, setPdfViewUrl] = useState<string | null>(null);
+  // true → pdfViewUrl es un object URL local (hay que revocarlo);
+  // false → es una URL firmada del backend servida inline (usuario restringido).
+  const [pdfIsObjectUrl, setPdfIsObjectUrl] = useState(false);
   const [pdfName, setPdfName] = useState("documento.pdf");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
@@ -139,15 +142,15 @@ export default function ArchivesPage() {
     }
   };
 
-  // Revoca la blob URL de vista previa anterior cada vez que cambia o al desmontar
-  // (la URL firmada del backend viene con disposición "attachment" por defecto,
-  // así que navegar/iframear esa URL directamente dispara una descarga en vez de
-  // previsualizar; por eso se trae como blob y se muestra con un object URL local).
+  // Revoca la object URL de vista previa anterior al cambiar o desmontar.
+  // Para usuario restringido el backend sirve la URL firmada con
+  // `Content-Disposition: inline` (TTL 60 s) → se iframea directa, sin blob,
+  // así el navegador nunca tiene el archivo completo en memoria.
   useEffect(() => {
     return () => {
-      if (pdfViewUrl) URL.revokeObjectURL(pdfViewUrl);
+      if (pdfIsObjectUrl && pdfViewUrl) URL.revokeObjectURL(pdfViewUrl);
     };
-  }, [pdfViewUrl]);
+  }, [pdfViewUrl, pdfIsObjectUrl]);
 
   const openPdf = async (row: Archive) => {
     if (creatingCodes.includes(row.code)) {
@@ -165,12 +168,24 @@ export default function ArchivesPage() {
         setPdfOpen(false);
         return;
       }
-      const [{ downloadRestricted }, blob] = await Promise.all([
-        archivesService.getPdfUrl(key),
-        archivesService.downloadPdf(key),
-      ]);
+
+      // Primero la URL firmada — su `downloadRestricted` confirma si el backend
+      // trata a este usuario como restringido (el flag local puede estar viejo).
+      const { url, downloadRestricted } = await archivesService.getPdfUrl(key);
       if (downloadRestricted) setServerPdfRestricted(true);
-      setPdfViewUrl(URL.createObjectURL(blob));
+
+      if (pdfRestricted || downloadRestricted) {
+        // Restringido: `url` viene inline. Se iframea directa, sin descargar
+        // los bytes (el endpoint de descarga responde 403 para este usuario).
+        setPdfIsObjectUrl(false);
+        setPdfViewUrl(url);
+      } else {
+        // Normal: la URL firmada es "attachment"; se trae como blob para poder
+        // previsualizarla en el iframe.
+        const blob = await archivesService.downloadPdf(key);
+        setPdfIsObjectUrl(true);
+        setPdfViewUrl(URL.createObjectURL(blob));
+      }
     } catch {
       toast.error("No se pudo cargar el documento");
       setPdfOpen(false);
