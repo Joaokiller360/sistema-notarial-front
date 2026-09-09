@@ -22,8 +22,19 @@ export function useNotificationsBootstrap() {
     setUsersLoading,
   } = useNotificationStore();
 
+  // `/users`, `/notifications/sent` y `/tasks/assigned` son solo para roles
+  // emisores. Pedirlos con otro rol devuelve 403; se saltan.
+  const canSend =
+    (user?.roles ?? []).includes("SUPER_ADMIN") ||
+    (user?.roles ?? []).includes("NOTARIO");
+
   /* ── Users (needed by send/assign forms) ────────────── */
   useEffect(() => {
+    if (!canSend) {
+      setUsers([]);
+      setUsersLoading(false);
+      return;
+    }
     let cancelled = false;
     setUsersLoading(true);
     usersService
@@ -32,39 +43,53 @@ export function useNotificationsBootstrap() {
       .catch(() => {})
       .finally(() => { if (!cancelled) setUsersLoading(false); });
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canSend]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Notifications + Tasks ───────────────────────────── */
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
 
-    Promise.all([
-      notificationsService.getInbox(),
-      notificationsService.getSent(),
-    ])
-      .then(([inboxRes, sentRes]) => {
+    Promise.all(
+      canSend
+        ? [notificationsService.getInbox(), notificationsService.getSent()]
+        : [notificationsService.getInbox()],
+    )
+      .then((results) => {
         if (cancelled) return;
-        const merged = [...inboxRes.data, ...sentRes.data];
-        const deduped = Array.from(new Map(merged.map((n) => [n.id, n])).values());
-        setNotifications(deduped);
+        // Fusiona con lo que ya haya en el store: el fetch inicial puede
+        // resolver DESPUÉS de que llegara una notificación por WebSocket o
+        // de un envío optimista, y no debe borrarla si el backend todavía
+        // no la incluye en la lista.
+        const fetched = results.flatMap((r) => r.data);
+        const byId = new Map<string, (typeof fetched)[number]>();
+        for (const n of fetched) byId.set(n.id, n);
+        for (const n of useNotificationStore.getState().notifications) {
+          if (!byId.has(n.id)) byId.set(n.id, n);
+        }
+        setNotifications(Array.from(byId.values()));
       })
       .catch(() => {});
 
-    Promise.all([
-      tasksService.getReceived(),
-      tasksService.getAssigned(),
-    ])
-      .then(([receivedRes, assignedRes]) => {
+    Promise.all(
+      canSend
+        ? [tasksService.getReceived(), tasksService.getAssigned()]
+        : [tasksService.getReceived()],
+    )
+      .then((results) => {
         if (cancelled) return;
-        const merged = [...receivedRes.data, ...assignedRes.data];
-        const deduped = Array.from(new Map(merged.map((t) => [t.id, t])).values());
-        setTasks(deduped);
+        const fetched = results.flatMap((r) => r.data);
+        const byId = new Map<string, (typeof fetched)[number]>();
+        for (const t of fetched) byId.set(t.id, t);
+        for (const t of useNotificationStore.getState().tasks) {
+          if (!byId.has(t.id)) byId.set(t.id, t);
+        }
+        setTasks(Array.from(byId.values()));
       })
       .catch(() => {});
 
     return () => { cancelled = true; };
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, canSend]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /**

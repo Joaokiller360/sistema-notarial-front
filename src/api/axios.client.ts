@@ -36,7 +36,8 @@ export const SESSION_NOTICE_KEY = "notaria_session_notice";
 // Sesión invalidada por el backend: login en otro dispositivo, cierre forzado
 // por un admin, cambio de contraseña o toma de una sesión abandonada.
 const SESSION_SUPERSEDED_RE = /sesi[oó]n iniciada en otro dispositivo/i;
-const SESSION_SUPERSEDED_NOTICE = "Tu sesión fue cerrada. Inicia sesión nuevamente.";
+export const SESSION_SUPERSEDED_NOTICE =
+  "Tu sesión fue cerrada. Inicia sesión nuevamente.";
 
 function errorMessage(error: AxiosError): string {
   const data = error.response?.data as { message?: unknown } | undefined;
@@ -53,7 +54,7 @@ function isSessionSuperseded(error: AxiosError): boolean {
 }
 
 /** Limpia tokens + cookie y vuelve a /login, opcionalmente con un aviso. */
-function forceLogout(notice?: string): void {
+export function forceLogout(notice?: string): void {
   tokenUtils.clearTokens();
   if (typeof window === "undefined") return;
   document.cookie =

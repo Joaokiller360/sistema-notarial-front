@@ -2,11 +2,12 @@
 
 import { AuthGuard } from "@/guards";
 import { Sidebar, Navbar, Breadcrumbs, MobileSidebar, Footer } from "@/components/layout";
-import { useTokenRefresh, useNotificationsBootstrap, useCurrentUserSync, useLogoutOnUnload } from "@/hooks";
+import { useTokenRefresh, useNotificationsBootstrap, useCurrentUserSync, useLogoutOnUnload, useRealtimeConnection } from "@/hooks";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   useTokenRefresh();
   useNotificationsBootstrap();
+  useRealtimeConnection();
   useCurrentUserSync();
   useLogoutOnUnload();
   return (

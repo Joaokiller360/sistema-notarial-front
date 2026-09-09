@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, Search, Filter, Pencil, Trash2, ToggleLeft, ToggleRight, Ban, Lock, LockOpen, MonitorX } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -32,7 +30,7 @@ import {
 import type { User, Role } from "@/types";
 import { usersService, authService } from "@/services";
 import { toast } from "sonner";
-import { extractRoleKey } from "@/utils/formatters";
+import { UserFormDialog } from "./UserFormDialog";
 
 const ROLE_OPTIONS: { value: Role | ""; label: string }[] = [
   { value: "", label: "Todos los roles" },
@@ -57,7 +55,6 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function UsersPage() {
-  const router = useRouter();
   const { users, isLoading, fetchUsers, deleteUser } = useUsers();
   const { isSuperAdmin, isNotario, canManageUsers, user: currentUser } = usePermissions();
 
@@ -91,6 +88,11 @@ export default function UsersPage() {
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [forceLogoutId, setForceLogoutId] = useState<string | null>(null);
   const [isForcingLogout, setIsForcingLogout] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<User | null>(null);
+
+  const openCreate = () => { setEditTarget(null); setFormOpen(true); };
+  const openEdit = (u: User) => { setEditTarget(u); setFormOpen(true); };
 
   const load = useCallback(() => {
     fetchUsers({ page: 1, limit: 50 });
@@ -367,7 +369,7 @@ export default function UsersPage() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 cursor-pointer"
-                onClick={() => router.push(`/users/${row.id}/edit`)}
+                onClick={() => openEdit(row)}
               >
                 <Pencil className="w-3.5 h-3.5" />
               </Button>
@@ -395,10 +397,10 @@ export default function UsersPage() {
       <PageHeader title="Usuarios" description="Gestión de usuarios y permisos del sistema">
         {/* Tarea 7: solo SUPER_ADMIN y NOTARIO pueden agregar usuarios */}
         {canManageUsers() && (
-          <ButtonLink href="/users/new">
+          <Button className="cursor-pointer" onClick={openCreate}>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Usuario
-          </ButtonLink>
+          </Button>
         )}
       </PageHeader>
 
@@ -453,6 +455,16 @@ export default function UsersPage() {
           />
         )}
       </div>
+
+      <UserFormDialog
+        open={formOpen}
+        onOpenChange={(v) => {
+          setFormOpen(v);
+          if (!v) setEditTarget(null);
+        }}
+        editUser={editTarget}
+        onSaved={load}
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

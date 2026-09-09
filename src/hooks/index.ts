@@ -8,3 +8,4 @@ export { useSystemSettings } from "./useSystemSettings";
 export { useCurrentUserSync } from "./useCurrentUserSync";
 export { useLogoutOnUnload } from "./useLogoutOnUnload";
 export { useNews } from "./useNews";
+export { useRealtimeConnection } from "./useRealtimeConnection";

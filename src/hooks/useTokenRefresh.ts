@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import axios from "axios";
 import { tokenUtils } from "@/utils/token";
+import { reconnectWithToken } from "@/lib/socket";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api/v1";
@@ -42,6 +43,9 @@ export function useTokenRefresh() {
           const data = res.data?.data || res.data;
           if (data?.accessToken && data?.refreshToken) {
             tokenUtils.setTokens(data.accessToken, data.refreshToken);
+            // Reconecta el socket con el token nuevo para que no se caiga
+            // silenciosamente cuando expire el anterior.
+            reconnectWithToken(data.accessToken);
             scheduleRefresh();
           }
         } catch {

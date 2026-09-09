@@ -6,6 +6,12 @@ const API_BASE =
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.100.76"],
+  // Deriva la URL del WebSocket del mismo API_BASE (NEXT_PUBLIC_API_URL sin
+  // /api/v1) para no mantener dos variables que puedan desincronizarse.
+  // Un NEXT_PUBLIC_WS_URL explícito, si se define, tiene prioridad.
+  env: {
+    NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || API_BASE,
+  },
   images: {
     remotePatterns: [
       {
