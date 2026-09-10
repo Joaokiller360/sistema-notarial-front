@@ -77,20 +77,30 @@ export function useArchives() {
       setArchives(null);
       try {
         const BATCH = 100;
-        const MAX_PAGES = 10;
+        const MAX_PAGES = 20;
 
         const first = await archivesService.getAll({ ...filters, page: 1, limit: BATCH });
         let all: Archive[] = [...first.data];
 
-        const pagesToFetch = Math.min(first.totalPages - 1, MAX_PAGES - 1);
-        for (let i = 0; i < pagesToFetch; i++) {
-          const r = await archivesService.getAll({ ...filters, page: i + 2, limit: BATCH });
+        // No confiar en `first.totalPages` (el backend a veces lo devuelve mal
+        // cuando se pide un `limit` grande). Se pagina mientras falten registros
+        // frente a `first.total` y la última página venga llena.
+        let pageNum = 2;
+        while (
+          all.length < first.total &&
+          pageNum <= MAX_PAGES &&
+          first.data.length > 0
+        ) {
+          const r = await archivesService.getAll({ ...filters, page: pageNum, limit: BATCH });
+          if (r.data.length === 0) break;
           all = all.concat(r.data);
+          if (r.data.length < first.data.length) break; // última página parcial
+          pageNum++;
         }
 
         setArchives({
           data: all,
-          total: first.total,
+          total: first.total || all.length,
           page: 1,
           limit: all.length || BATCH,
           totalPages: 1,
